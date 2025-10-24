@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Application\Contact\CreateContact;
 
-final readonly class CreateContactRequest
+final readonly class CreateContactCommand
 {
     public function __construct(
         public string $subject,

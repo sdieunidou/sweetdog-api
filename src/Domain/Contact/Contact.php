@@ -21,4 +21,13 @@ readonly class Contact
             id: $id,
         );
     }
+
+    public function withId(int $id): self
+    {
+        return new self(
+            subject: $this->subject,
+            message: $this->message,
+            id: $id,
+        );
+    }
 }

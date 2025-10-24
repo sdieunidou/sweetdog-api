@@ -14,13 +14,13 @@ final class Contact
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]
-    public ?int $id;
+    private ?int $id;
 
     #[ORM\Column(type: Types::STRING, length: 100)]
-    public string $subject;
+    private string $subject;
 
     #[ORM\Column(type: Types::TEXT)]
-    public string $message;
+    private string $message;
 
     public function __construct(
         string $subject,
@@ -30,5 +30,20 @@ final class Contact
         $this->subject = $subject;
         $this->message = $message;
         $this->id = $id;
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function getSubject(): string
+    {
+        return $this->subject;
+    }
+
+    public function getMessage(): string
+    {
+        return $this->message;
     }
 }

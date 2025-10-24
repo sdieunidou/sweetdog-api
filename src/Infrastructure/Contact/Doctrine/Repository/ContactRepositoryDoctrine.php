@@ -31,6 +31,6 @@ final class ContactRepositoryDoctrine extends AbstractBaseRepositoryDoctrine imp
         $this->entityManager->persist($doctrineContact);
         $this->entityManager->flush();
 
-        return $doctrineContact->id;
+        return $doctrineContact->getId();
     }
 }
