@@ -7,9 +7,9 @@ namespace Domain\Contact;
 readonly class Contact
 {
     public function __construct(
-        protected string $subject,
-        protected string $message,
-        protected ?int $id,
+        public string $subject,
+        public string $message,
+        public ?int $id,
     ) {
     }
 

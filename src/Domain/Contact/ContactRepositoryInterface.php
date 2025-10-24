@@ -6,5 +6,5 @@ namespace Domain\Contact;
 
 interface ContactRepositoryInterface
 {
-    public function create(Contact $contact): void;
+    public function create(Contact $contact): int;
 }

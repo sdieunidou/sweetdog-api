@@ -21,9 +21,16 @@ final class ContactRepositoryDoctrine extends AbstractBaseRepositoryDoctrine imp
         $this->repository = $this->entityManager->getRepository(ContactDoctrine::class);
     }
 
-    public function create(Contact $contact): void
+    public function create(Contact $contact): int
     {
-        $this->entityManager->persist($contact);
+        $doctrineContact = new ContactDoctrine(
+            $contact->subject,
+            $contact->message,
+        );
+
+        $this->entityManager->persist($doctrineContact);
         $this->entityManager->flush();
+
+        return $doctrineContact->id;
     }
 }
