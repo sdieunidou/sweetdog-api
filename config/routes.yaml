@@ -1,5 +1,5 @@
-controllers:
+contact_controllers:
     resource:
-        path: ../src/Infrastructure/Symfony/Controller/
-        namespace: App\Controller
+        path: ../src/Infrastructure/Contact/Symfony/Controller/
+        namespace: Infrastructure\Contact\Symfony\Controller
     type: attribute
