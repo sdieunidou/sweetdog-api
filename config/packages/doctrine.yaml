@@ -18,12 +18,12 @@ doctrine:
             Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
         auto_mapping: true
         mappings:
-            App:
+            Contact:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Infrastructure/Symfony/Entity'
-                prefix: 'Infrastructure\Symfony\Entity'
-                alias: App
+                dir: '%kernel.project_dir%/src/Infrastructure/Contact/Doctrine/Entity'
+                prefix: 'Infrastructure\Contact\Doctrine\Entity'
+                alias: Contact
         controller_resolver:
             auto_mapping: false
 
