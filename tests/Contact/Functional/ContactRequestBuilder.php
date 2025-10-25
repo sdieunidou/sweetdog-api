@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Contact\Functional\CreateContact;
+namespace Tests\Contact\Functional;
 
-class CreateContactRequestBuilder
+class ContactRequestBuilder
 {
     private array $data = [];
 

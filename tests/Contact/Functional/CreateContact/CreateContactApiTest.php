@@ -7,6 +7,7 @@ namespace Tests\Contact\Functional\CreateContact;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Tests\Contact\Functional\ContactApiEndpoint;
+use Tests\Contact\Functional\ContactRequestBuilder;
 
 class CreateContactApiTest extends WebTestCase
 {
@@ -15,7 +16,7 @@ class CreateContactApiTest extends WebTestCase
         $client = static::createClient();
         $apiPage = new ContactApiEndpoint($client, $this);
 
-        $apiPage->createContact((new CreateContactRequestBuilder())->withValidData()->build())
+        $apiPage->createContact((new ContactRequestBuilder())->withValidData()->build())
                 ->assertSuccess()
                 ->assertSuccessResponse([
                     'subject' => 'Valid Subject',
@@ -29,7 +30,7 @@ class CreateContactApiTest extends WebTestCase
         $client = static::createClient();
         $apiPage = new ContactApiEndpoint($client, $this);
 
-        $apiPage->createContact((new CreateContactRequestBuilder())->withEmptyFields()->build())
+        $apiPage->createContact((new ContactRequestBuilder())->withEmptyFields()->build())
                 ->assertValidationError()
                 ->assertViolations([
                     'Le sujet ne peut pas être vide',
@@ -52,7 +53,7 @@ class CreateContactApiTest extends WebTestCase
         $client = static::createClient();
         $apiPage = new ContactApiEndpoint($client, $this);
 
-        $apiPage->createContact((new CreateContactRequestBuilder())->withSubject($subject)->build())
+        $apiPage->createContact((new ContactRequestBuilder())->withSubject($subject)->build())
                 ->assertValidationError()
                 ->assertViolations([$expectedError]);
     }
@@ -63,7 +64,7 @@ class CreateContactApiTest extends WebTestCase
         $client = static::createClient();
         $apiPage = new ContactApiEndpoint($client, $this);
 
-        $apiPage->createContact((new CreateContactRequestBuilder())->withMessage($message)->build())
+        $apiPage->createContact((new ContactRequestBuilder())->withMessage($message)->build())
                 ->assertValidationError()
                 ->assertViolations([$expectedError]);
     }
@@ -84,7 +85,7 @@ class CreateContactApiTest extends WebTestCase
         $client = static::createClient();
         $apiPage = new ContactApiEndpoint($client, $this);
 
-        $apiPage->createContact((new CreateContactRequestBuilder())->withEmptyFields()->build())
+        $apiPage->createContact((new ContactRequestBuilder())->withEmptyFields()->build())
                 ->assertValidationError()
                 ->assertViolations();
     }
@@ -95,7 +96,7 @@ class CreateContactApiTest extends WebTestCase
         $client = static::createClient();
         $apiPage = new ContactApiEndpoint($client, $this);
 
-        $apiPage->createContact((new CreateContactRequestBuilder())->withSubject($subject)->withMessage($message)->build())
+        $apiPage->createContact((new ContactRequestBuilder())->withSubject($subject)->withMessage($message)->build())
                 ->assertSuccess()
                 ->assertSuccessResponse([
                     'subject' => $subject,
@@ -109,7 +110,7 @@ class CreateContactApiTest extends WebTestCase
         $client = static::createClient();
         $apiPage = new ContactApiEndpoint($client, $this);
 
-        $apiPage->createContact((new CreateContactRequestBuilder())->withSpecialCharacters()->build())
+        $apiPage->createContact((new ContactRequestBuilder())->withSpecialCharacters()->build())
                 ->assertSuccess()
                 ->assertSuccessResponse([
                     'subject' => 'Test Subject with valid chars 123, 456! 789?',
