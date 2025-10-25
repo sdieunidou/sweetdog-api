@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Tests\Contact\Functional\CreateContact;
+namespace Tests\Contact\Functional;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\BrowserKit\AbstractBrowser;
 use Tests\Traits\CommonAssertions;
 
-class CreateContactApiPage
+class ContactApiEndpoint
 {
     use CommonAssertions;
 
