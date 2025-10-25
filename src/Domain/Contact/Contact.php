@@ -22,7 +22,7 @@ readonly class Contact
         );
     }
 
-    public function withId(int $id): self
+    public function withId(?int $id): self
     {
         return new self(
             subject: $this->subject,
