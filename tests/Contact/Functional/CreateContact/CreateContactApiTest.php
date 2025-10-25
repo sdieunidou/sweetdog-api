@@ -6,7 +6,7 @@ namespace Tests\Contact\Functional\CreateContact;
 
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Tests\Contact\Functional\ContactApiEndpoint;
+use Tests\Contact\Functional\ContactEndpoints;
 use Tests\Contact\Functional\ContactRequestBuilder;
 
 class CreateContactApiTest extends WebTestCase
@@ -14,7 +14,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactSuccess(): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContact((new ContactRequestBuilder())->withValidData()->build())
                 ->assertSuccess()
@@ -28,7 +28,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactWithEmptyFields(): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContact((new ContactRequestBuilder())->withEmptyFields()->build())
                 ->assertValidationError()
@@ -41,7 +41,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactWithInvalidJson(): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContactWithInvalidJson()
                 ->assertBadRequest();
@@ -51,7 +51,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactWithInvalidSubject(string $subject, string $expectedError): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContact((new ContactRequestBuilder())->withSubject($subject)->build())
                 ->assertValidationError()
@@ -62,7 +62,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactWithInvalidMessage(string $message, string $expectedError): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContact((new ContactRequestBuilder())->withMessage($message)->build())
                 ->assertValidationError()
@@ -73,7 +73,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactWithMultipleValidationErrors(array $data, array $expectedErrors): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContact($data)
                 ->assertValidationError()
@@ -83,7 +83,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactErrorResponseStructure(): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContact((new ContactRequestBuilder())->withEmptyFields()->build())
                 ->assertValidationError()
@@ -94,7 +94,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactWithBoundaryValues(string $subject, string $message): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContact((new ContactRequestBuilder())->withSubject($subject)->withMessage($message)->build())
                 ->assertSuccess()
@@ -108,7 +108,7 @@ class CreateContactApiTest extends WebTestCase
     public function testCreateContactWithValidSpecialCharacters(): void
     {
         $client = static::createClient();
-        $apiPage = new ContactApiEndpoint($client, $this);
+        $apiPage = new ContactEndpoints($client, $this);
 
         $apiPage->createContact((new ContactRequestBuilder())->withSpecialCharacters()->build())
                 ->assertSuccess()

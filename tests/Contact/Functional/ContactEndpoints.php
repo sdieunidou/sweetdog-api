@@ -8,7 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\BrowserKit\AbstractBrowser;
 use Tests\Traits\CommonAssertions;
 
-class ContactApiEndpoint
+class ContactEndpoints
 {
     use CommonAssertions;
 
