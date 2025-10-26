@@ -21,7 +21,37 @@ services:
       # - ./docker/db/data:/var/lib/postgresql/data:rw
 ###< doctrine/doctrine-bundle ###
 
+  # This is the main FusionAuth application.
+  fusionauth:
+    image: fusionauth/fusionauth-app:latest
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://database:5432/fusionauth
+      DATABASE_ROOT_USERNAME: ${POSTGRES_USER:-app}
+      DATABASE_ROOT_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
+      DATABASE_USERNAME: ${DATABASE_USER:-fusionauth}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-!ChangeMe!}
+      FUSIONAUTH_APP_MEMORY: 512M
+      FUSIONAUTH_APP_RUNTIME_MODE: development
+      FUSIONAUTH_APP_URL: http://fusionauth4:9011
+      FUSIONAUTH_APP_KICKSTART_FILE: /usr/local/fusionauth/kickstart.json
+      SEARCH_TYPE: database
+    healthcheck:
+      test: curl --silent --fail http://localhost:9011/api/status -o /dev/null -w "%{http_code}"
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    ports:
+      - 9011:9011
+    volumes:
+      - fusionauth_config:/usr/local/fusionauth/config
+      - ./docker/fusionauth/kickstart.json:/usr/local/fusionauth/kickstart.json
+      
 volumes:
 ###> doctrine/doctrine-bundle ###
   database_data:
 ###< doctrine/doctrine-bundle ###
+  fusionauth_config:

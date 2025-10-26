@@ -1,0 +1,83 @@
+{
+  "variables": {
+    "adminEmail": "admin@admin.com",
+    "adminPassword": "password",
+    "userAppId": "fcd248ef-4e36-4cc9-a799-ee58912a38f5",
+    "adminUserId": "cac340b0-9682-43ac-9de5-c2a3ae1cdef0",
+    "defaultTenantId": "d7d09513-a3f5-401c-9685-34ab6c552453"
+  },
+  "apiKeys": [
+    {
+      "key": "wR-ckTjSGeLM6SdGjGWRXGxmCc0XoF3l7WmD5kL7StmpsLnSOH_6nfmY",
+      "keyManager" : false,
+      "description": "API key"
+    }
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "url": "/api/application/#{userAppId}",
+      "tenantId": "#{defaultTenantId}",
+      "body": {
+        "application": {
+          "name": "SweetDog API",
+          "authorizedOriginURLs": ["http://localhost"],
+          "authorizedRedirectURLs": ["http://localhost"],
+          "enabledGrants": ["authorization_code"],
+          "verifyRegistration": false,
+          "roles": [
+            {
+              "name": "user"
+            },
+            {
+              "name": "admin"
+            }
+          ],
+          "jwtConfiguration": {
+            "enabled": true
+          },
+          "loginConfiguration": {
+            "allowTokenRefresh": true,
+            "generateRefreshTokens": true,
+            "requireAuthentication": true
+          },
+          "oauthConfiguration": {
+            "requireRegistration": true
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration/#{adminUserId}",
+      "body": {
+        "user": {
+          "birthDate": "1981-06-04",
+          "email": "#{adminEmail}",
+          "firstName": "FirstName",
+          "lastName": "LastName",
+          "password": "#{adminPassword}"
+        },
+        "registration": {
+          "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration/#{adminUserId}",
+      "body": {
+        "registration": {
+          "applicationId": "#{userAppId}",
+          "roles": [
+            "user",
+            "admin"
+          ]
+        }
+      }
+    }
+  ]
+}
