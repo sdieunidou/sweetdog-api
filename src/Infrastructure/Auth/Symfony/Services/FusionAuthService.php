@@ -66,52 +66,6 @@ final class FusionAuthService implements AuthenticationServiceInterface
         );
     }
 
-    public function fetchUserInfo(string $token): JwtClaims
-    {
-        $response = $this->httpClient->request('GET', sprintf('%s/api/user', $this->fusionAuthUrl), [
-            'headers' => [
-                'Authorization' => sprintf('Bearer %s', $token),
-            ],
-        ]);
-
-        $data = $response->toArray();
-
-        if (!isset($data['user'])) {
-            throw new \RuntimeException('User information not found');
-        }
-
-        // Récupérer la registration pour cette application
-        if (!isset($data['user']['registrations']) || !is_array($data['user']['registrations'])) {
-            throw new \RuntimeException('User registrations not found');
-        }
-
-        $registration = current(array_filter($data['user']['registrations'], function ($registration) {
-            return $registration['applicationId'] === $this->fusionAuthApplicationId;
-        }));
-
-        if (!$registration) {
-            throw new \RuntimeException('Registration not found for this application');
-        }
-
-        // Cette méthode retourne le JWT décodé, donc on simule une structure similaire
-        // mais avec les données actuelles de l'utilisateur
-        return new JwtClaims(
-            aud: $this->fusionAuthApplicationId,
-            exp: 0, // Pas disponible via cet endpoint
-            iat: 0, // Pas disponible via cet endpoint
-            iss: 'acme.com', // Valeur par défaut
-            jti: '', // Pas disponible
-            sub: $data['user']['id'],
-            applicationId: $this->fusionAuthApplicationId,
-            authTime: 0, // Pas disponible
-            authenticationType: '', // Pas disponible
-            roles: $registration['roles'] ?? [],
-            sid: '', // Pas disponible
-            tid: '', // Pas disponible
-            tty: '', // Pas disponible
-        );
-    }
-
     public function authenticateUser(string $email, string $password, string $ipAddress): AuthenticationResponse
     {
         $response = $this->httpClient->request('POST', sprintf('%s/api/login', $this->fusionAuthUrl), [
