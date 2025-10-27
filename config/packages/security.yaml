@@ -9,6 +9,18 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+
+        api_login:
+            pattern: ^/api/auth/login
+            stateless: true
+            security: false
+
+        api:
+            pattern: ^/api/
+            stateless: true
+            custom_authenticator: Infrastructure\Auth\Symfony\Security\FusionAuthAuthenticator
+            entry_point: Infrastructure\Auth\Symfony\Security\ApiAuthenticationEntryPoint
+
         main:
             lazy: true
             provider: users_in_memory
@@ -23,7 +35,8 @@ security:
     # Note: Only the *first* access control that matches will be used
     access_control:
         # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+         - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
+         - { path: ^/api, roles: ROLE_USER  }
 
 when@test:
     security:

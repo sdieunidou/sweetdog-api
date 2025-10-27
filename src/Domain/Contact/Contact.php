@@ -24,7 +24,7 @@ readonly class Contact
 
     public function withId(?int $id): self
     {
-        return new self(
+        return self::create(
             subject: $this->subject,
             message: $this->message,
             id: $id,

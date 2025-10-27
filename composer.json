@@ -101,6 +101,7 @@
         }
     },
     "require-dev": {
+        "dama/doctrine-test-bundle": "^8.4",
         "doctrine/doctrine-fixtures-bundle": "^4.3",
         "friendsofphp/php-cs-fixer": "^3.89",
         "mockery/mockery": "^1.6",
