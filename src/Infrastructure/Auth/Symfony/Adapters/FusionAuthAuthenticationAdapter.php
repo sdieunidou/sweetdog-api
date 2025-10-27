@@ -2,40 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Infrastructure\Auth\Symfony\Services;
+namespace Infrastructure\Auth\Symfony\Adapters;
 
 use Domain\Auth\AuthenticationResponse;
 use Domain\Auth\AuthenticationServiceInterface;
 use Domain\Auth\JwtClaims;
+use Infrastructure\Auth\Symfony\Client\FusionAuthClient;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\OptionsResolver\OptionsResolver;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final class FusionAuthService implements AuthenticationServiceInterface
+final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInterface
 {
     public function __construct(
-        private readonly HttpClientInterface $httpClient,
-        #[Autowire('%env(FUSIONAUTH_URL)%')]
-        private readonly string $fusionAuthUrl,
+        private readonly FusionAuthClient $fusionAuthClient,
         #[Autowire('%env(FUSIONAUTH_APPLICATION_ID)%')]
         private readonly string $fusionAuthApplicationId,
-        #[Autowire('%env(FUSIONAUTH_API_KEY)%')]
-        private readonly string $fusionAuthApiKey,
     ) {
     }
 
     public function decodeAndValidateJwtToken(string $token): JwtClaims
     {
-        $response = $this->httpClient->request('GET', sprintf('%s/api/jwt/validate', $this->fusionAuthUrl), [
-            'headers' => [
-                'Authorization' => sprintf('Bearer %s', $token),
-            ],
-            'json' => [
-                'access_token' => $token,
-            ],
-        ]);
-
-        $data = $response->toArray();
+        $data = $this->fusionAuthClient->validateJwtToken($token);
 
         if (!isset($data['jwt']) || !is_array($data['jwt'])) {
             throw new \RuntimeException('Invalid JWT validation');
@@ -68,20 +55,13 @@ final class FusionAuthService implements AuthenticationServiceInterface
 
     public function authenticateUser(string $email, string $password, string $ipAddress): AuthenticationResponse
     {
-        $response = $this->httpClient->request('POST', sprintf('%s/api/login', $this->fusionAuthUrl), [
-            'headers' => [
-                'Authorization' => $this->fusionAuthApiKey,
-            ],
-            'json' => [
-                'applicationId' => $this->fusionAuthApplicationId,
-                'loginId' => $email,
-                'password' => $password,
-                'loginIdTypes' => ['email'],
-                'ipAddress' => $ipAddress,
-            ],
+        $data = $this->fusionAuthClient->login([
+            'applicationId' => $this->fusionAuthApplicationId,
+            'loginId' => $email,
+            'password' => $password,
+            'loginIdTypes' => ['email'],
+            'ipAddress' => $ipAddress,
         ]);
-
-        $data = $response->toArray();
 
         $this->validateLoginResponseData($data);
 
@@ -162,13 +142,7 @@ final class FusionAuthService implements AuthenticationServiceInterface
 
     private function verifyUserIsActive(string $userId): void
     {
-        $response = $this->httpClient->request('GET', sprintf('%s/api/user/%s', $this->fusionAuthUrl, $userId), [
-            'headers' => [
-                'Authorization' => $this->fusionAuthApiKey,
-            ],
-        ]);
-
-        $data = $response->toArray();
+        $data = $this->fusionAuthClient->getUser($userId);
 
         if (!isset($data['user']['active']) || true !== $data['user']['active']) {
             throw new \RuntimeException('User account has been deactivated');

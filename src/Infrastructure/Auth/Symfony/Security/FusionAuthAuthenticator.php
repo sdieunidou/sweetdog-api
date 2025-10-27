@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Infrastructure\Auth\Symfony\Security;
 
 use Domain\Auth\UserRepositoryInterface;
-use Infrastructure\Auth\Symfony\Services\FusionAuthService;
+use Infrastructure\Auth\Symfony\Adapters\FusionAuthAuthenticationAdapter;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +20,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPasspor
 final class FusionAuthAuthenticator extends AbstractAuthenticator
 {
     public function __construct(
-        private readonly FusionAuthService $fusionAuthService,
+        private readonly FusionAuthAuthenticationAdapter $fusionAuthAuthenticationAdapter,
         private readonly UserRepositoryInterface $userRepository,
     ) {
     }
@@ -39,7 +39,7 @@ final class FusionAuthAuthenticator extends AbstractAuthenticator
         }
 
         try {
-            $validatedToken = $this->fusionAuthService->decodeAndValidateJwtToken($token);
+            $validatedToken = $this->fusionAuthAuthenticationAdapter->decodeAndValidateJwtToken($token);
         } catch (\Throwable $e) {
             throw new CustomUserMessageAuthenticationException('Invalid token', previous: $e);
         }
