@@ -60,7 +60,6 @@ final class FusionAuthService implements AuthenticationServiceInterface
             applicationId: $jwt['applicationId'],
             authTime: (int) $jwt['auth_time'],
             authenticationType: $jwt['authenticationType'],
-            roles: $jwt['roles'] ?? [],
             sid: $jwt['sid'],
             tid: $jwt['tid'],
             tty: $jwt['tty'],

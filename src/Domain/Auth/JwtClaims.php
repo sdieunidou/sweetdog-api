@@ -16,7 +16,6 @@ final readonly class JwtClaims
         public string $applicationId,
         public int $authTime,
         public string $authenticationType,
-        public array $roles,
         public string $sid,
         public string $tid,
         public string $tty,
