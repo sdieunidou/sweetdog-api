@@ -3,3 +3,9 @@ contact_controllers:
         path: ../src/Infrastructure/Contact/Symfony/Controller/
         namespace: Infrastructure\Contact\Symfony\Controller
     type: attribute
+
+auth_controllers:
+    resource:
+        path: ../src/Infrastructure/Auth/Symfony/Controller/
+        namespace: Infrastructure\Auth\Symfony\Controller
+    type: attribute

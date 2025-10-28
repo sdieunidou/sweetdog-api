@@ -6,13 +6,11 @@ namespace Application\Contact\CreateContact;
 
 use Domain\Contact\Contact;
 use Domain\Contact\ContactRepositoryInterface;
-use Symfony\Component\ObjectMapper\ObjectMapperInterface;
 
 final readonly class CreateContactUseCase
 {
     public function __construct(
         private readonly ContactRepositoryInterface $contactRepository,
-        private readonly ObjectMapperInterface $objectMapper,
     ) {
     }
 
@@ -24,6 +22,10 @@ final readonly class CreateContactUseCase
 
         $contactWithId = $contact->withId($id);
 
-        return $this->objectMapper->map($contactWithId, CreateContactResponse::class);
+        return new CreateContactResponse(
+            id: $contactWithId->id,
+            subject: $contactWithId->subject,
+            message: $contactWithId->message,
+        );
     }
 }

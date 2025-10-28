@@ -6,116 +6,139 @@ namespace Tests\Contact\Functional\CreateContact;
 
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Tests\Contact\Functional\ContactEndpoints;
+use Tests\Contact\Functional\ContactApiClient;
 use Tests\Contact\Functional\ContactRequestBuilder;
+use Tests\Shared\Functional\CommonAssertions;
 
 class CreateContactApiTest extends WebTestCase
 {
+    use CommonAssertions;
+
+    private function createApiClient(): ContactApiClient
+    {
+        return new ContactApiClient(static::createClient(), $this);
+    }
+
     public function testCreateContactSuccess(): void
     {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
+        $client = $this->createApiClient()
+            ->createContact((new ContactRequestBuilder())->withValidData()->build())
+        ;
 
-        $apiPage->createContact((new ContactRequestBuilder())->withValidData()->build())
-                ->assertSuccess()
-                ->assertSuccessResponse([
-                    'subject' => 'Valid Subject',
-                    'message' => 'Valid message with enough characters',
-                ])
-                ->assertIdIsInteger();
+        $responseData = $client->getResponseData();
+
+        $this
+            ->assertHttpCreated()
+            ->assertSuccessResponse([
+                'subject' => 'Valid Subject',
+                'message' => 'Valid message with enough characters',
+            ], $responseData)
+            ->assertIdIsInteger($responseData);
     }
 
     public function testCreateContactWithEmptyFields(): void
     {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
+        $client = $this->createApiClient()
+            ->createContact((new ContactRequestBuilder())->withEmptyFields()->build())
+        ;
 
-        $apiPage->createContact((new ContactRequestBuilder())->withEmptyFields()->build())
-                ->assertValidationError()
-                ->assertViolations([
-                    'Le sujet ne peut pas être vide',
-                    'Le message ne peut pas être vide',
-                ]);
-    }
+        $responseData = $client->getResponseData();
 
-    public function testCreateContactWithInvalidJson(): void
-    {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
-
-        $apiPage->createContactWithInvalidJson()
-                ->assertBadRequest();
+        $this
+            ->assertHttpValidationError()
+            ->assertViolations([
+                'Le sujet ne peut pas être vide',
+                'Le message ne peut pas être vide',
+            ], $responseData);
     }
 
     #[DataProviderExternal(CreateContactValidationDataProvider::class, 'invalidSubjects')]
     public function testCreateContactWithInvalidSubject(string $subject, string $expectedError): void
     {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
+        $client = $this->createApiClient()
+            ->createContact((new ContactRequestBuilder())->withSubject($subject)->build())
+        ;
 
-        $apiPage->createContact((new ContactRequestBuilder())->withSubject($subject)->build())
-                ->assertValidationError()
-                ->assertViolations([$expectedError]);
+        $responseData = $client->getResponseData();
+
+        $this
+            ->assertHttpValidationError()
+            ->assertViolations([$expectedError], $responseData);
     }
 
     #[DataProviderExternal(CreateContactValidationDataProvider::class, 'invalidMessages')]
     public function testCreateContactWithInvalidMessage(string $message, string $expectedError): void
     {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
+        $client = $this->createApiClient()
+            ->createContact((new ContactRequestBuilder())->withMessage($message)->build())
+        ;
 
-        $apiPage->createContact((new ContactRequestBuilder())->withMessage($message)->build())
-                ->assertValidationError()
-                ->assertViolations([$expectedError]);
+        $responseData = $client->getResponseData();
+
+        $this
+            ->assertHttpValidationError()
+            ->assertViolations([$expectedError], $responseData);
     }
 
     #[DataProviderExternal(CreateContactValidationDataProvider::class, 'multipleValidationErrors')]
     public function testCreateContactWithMultipleValidationErrors(array $data, array $expectedErrors): void
     {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
+        $client = $this->createApiClient()
+            ->createContact($data)
+        ;
 
-        $apiPage->createContact($data)
-                ->assertValidationError()
-                ->assertViolations($expectedErrors);
+        $responseData = $client->getResponseData();
+
+        $this
+            ->assertHttpValidationError()
+            ->assertViolations($expectedErrors, $responseData);
     }
 
     public function testCreateContactErrorResponseStructure(): void
     {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
+        $client = $this->createApiClient()
+            ->createContact((new ContactRequestBuilder())->withEmptyFields()->build())
+        ;
 
-        $apiPage->createContact((new ContactRequestBuilder())->withEmptyFields()->build())
-                ->assertValidationError()
-                ->assertViolations();
+        $responseData = $client->getResponseData();
+
+        $this
+            ->assertHttpValidationError()
+            ->assertViolations([], $responseData);
     }
 
     #[DataProviderExternal(CreateContactValidationDataProvider::class, 'boundaryValues')]
     public function testCreateContactWithBoundaryValues(string $subject, string $message): void
     {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
+        $client = $this->createApiClient()
+            ->createContact((new ContactRequestBuilder())->withSubject($subject)->withMessage($message)->build())
+        ;
 
-        $apiPage->createContact((new ContactRequestBuilder())->withSubject($subject)->withMessage($message)->build())
-                ->assertSuccess()
-                ->assertSuccessResponse([
-                    'subject' => $subject,
-                    'message' => $message,
-                ])
-                ->assertIdIsInteger();
+        $responseData = $client->getResponseData();
+
+        $this
+            ->assertHttpCreated()
+            ->assertSuccessResponse([
+                'subject' => $subject,
+                'message' => $message,
+            ], $responseData)
+            ->assertIdIsInteger($responseData);
     }
 
     public function testCreateContactWithValidSpecialCharacters(): void
     {
-        $client = static::createClient();
-        $apiPage = new ContactEndpoints($client, $this);
+        $client = $this->createApiClient()
+            ->createContact((new ContactRequestBuilder())->withSpecialCharacters()->build())
+        ;
 
-        $apiPage->createContact((new ContactRequestBuilder())->withSpecialCharacters()->build())
-                ->assertSuccess()
-                ->assertSuccessResponse([
-                    'subject' => 'Test Subject with valid chars 123, 456! 789?',
-                    'message' => 'Test Message with valid special characters: 123, 456! 789? ; "quotes" and (parentheses)',
-                ])
-                ->assertIdIsInteger();
+        $responseData = $client->getResponseData();
+
+        $this
+            ->assertHttpCreated()
+            ->assertSuccessResponse([
+                'subject' => 'Test Subject with valid chars 123, 456! 789?',
+                'message' => 'Test Message with valid special characters: 123, 456! 789? ; "quotes" and (parentheses)',
+            ], $responseData)
+            ->assertIdIsInteger($responseData);
     }
 }

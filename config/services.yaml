@@ -26,7 +26,6 @@ services:
     # Explicitly register Domain services (e.g., domain-specific factories or use cases)
     Application\:
         resource: '../src/Application/'
-
     # Explicitly register Infrastructure services (Controllers, Adapters, etc.)
     Infrastructure\:
         resource: '../src/Infrastructure/'

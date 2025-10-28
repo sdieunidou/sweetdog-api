@@ -11,4 +11,9 @@ final readonly class CreateContactCommand
         public string $message,
     ) {
     }
+
+    public static function create(string $subject, string $message): self
+    {
+        return new self(subject: $subject, message: $message);
+    }
 }

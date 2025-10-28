@@ -30,10 +30,10 @@ final class CreateContactController extends AbstractController
     {
         $command = $this->objectMapper->map($createContactRequest, CreateContactCommand::class);
 
-        $contactResponse = ($this->createContactUseCase)($command);
+        $contact = ($this->createContactUseCase)($command);
 
         return new JsonResponse(
-            $this->serializer->serialize($contactResponse, 'json', ['groups' => ['contact:read']]),
+            $this->serializer->serialize($contact, 'json', ['groups' => ['contact:read']]),
             Response::HTTP_CREATED,
             json: true
         );
