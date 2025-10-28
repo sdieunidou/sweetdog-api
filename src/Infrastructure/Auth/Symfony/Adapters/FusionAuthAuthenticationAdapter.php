@@ -19,6 +19,9 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
 {
     public function __construct(
         private readonly FusionAuthClient $fusionAuthClient,
+        private readonly JwtClaimsResponseValidator $jwtClaimsValidator,
+        private readonly LoginResponseValidator $loginResponseValidator,
+        private readonly UserResponseValidator $userResponseValidator,
         #[Autowire('%env(FUSIONAUTH_APPLICATION_ID)%')]
         private readonly string $fusionAuthApplicationId,
     ) {
@@ -27,7 +30,7 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
     public function validateJwtAndGetClaims(string $token): JwtClaims
     {
         $data = $this->fusionAuthClient->validateJwtToken($token);
-        $claims = (new JwtClaimsResponseValidator())->validateAndBuildClaims($data, $this->fusionAuthApplicationId);
+        $claims = $this->jwtClaimsValidator->validateAndBuildClaims($data, $this->fusionAuthApplicationId);
 
         $this->verifyUserIsActive($claims->sub);
 
@@ -44,7 +47,7 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
             'ipAddress' => $ipAddress,
         ]);
 
-        (new LoginResponseValidator())->validate($data);
+        $this->loginResponseValidator->validate($data);
 
         if (!isset($data['user']['registrations']) || !is_array($data['user']['registrations'])) {
             throw new \RuntimeException('User registrations not found in FusionAuth response');
@@ -87,7 +90,7 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
     {
         $data = $this->fusionAuthClient->getUser($userId);
 
-        (new UserResponseValidator())->validate($data);
+        $this->userResponseValidator->validate($data);
 
         if (true !== $data['user']['active']) {
             throw new \RuntimeException('User account has been deactivated');

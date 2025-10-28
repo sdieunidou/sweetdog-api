@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace Infrastructure\Auth\Symfony\Validators;
 
+use Infrastructure\Shared\Validators\AbstractOptionsResolverValidator;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-final class UserResponseValidator
+final class UserResponseValidator extends AbstractOptionsResolverValidator
 {
-    public function validate(array $data): void
+    protected function configureResolver(OptionsResolver $resolver): void
     {
-        $resolver = new OptionsResolver();
-        $resolver->setIgnoreUndefined(true);
-
         $resolver->setRequired([
             'user',
         ]);
@@ -42,7 +40,5 @@ final class UserResponseValidator
 
             return $userResolver->resolve($value);
         });
-
-        $resolver->resolve($data);
     }
 }

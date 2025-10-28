@@ -5,23 +5,62 @@ declare(strict_types=1);
 namespace Infrastructure\Auth\Symfony\Validators;
 
 use Domain\Auth\JwtClaims;
+use Infrastructure\Shared\Validators\AbstractOptionsResolverValidator;
+use Symfony\Component\OptionsResolver\OptionsResolver;
 
-final class JwtClaimsResponseValidator
+final class JwtClaimsResponseValidator extends AbstractOptionsResolverValidator
 {
-    public function validateAndBuildClaims(array $data, string $expectedApplicationId): JwtClaims
+    protected function configureResolver(OptionsResolver $resolver): void
     {
-        if (!isset($data['jwt']) || !is_array($data['jwt'])) {
-            throw new \RuntimeException('Invalid JWT validation');
+        $resolver->setRequired(['jwt']);
+        $resolver->setAllowedTypes('jwt', 'array');
+        $resolver->setNormalizer('jwt', function ($options, $value) {
+            $jwtResolver = new OptionsResolver();
+            $jwtResolver->setIgnoreUndefined(true);
+
+            $jwtResolver->setRequired([
+                'aud',
+                'exp',
+                'iat',
+                'iss',
+                'jti',
+                'sub',
+                'applicationId',
+                'auth_time',
+                'authenticationType',
+                'sid',
+                'tid',
+                'tty',
+            ]);
+
+            $jwtResolver->setAllowedTypes('aud', 'string');
+            $jwtResolver->setAllowedTypes('exp', ['int', 'string']);
+            $jwtResolver->setAllowedTypes('iat', ['int', 'string']);
+            $jwtResolver->setAllowedTypes('iss', 'string');
+            $jwtResolver->setAllowedTypes('jti', 'string');
+            $jwtResolver->setAllowedTypes('sub', 'string');
+            $jwtResolver->setAllowedTypes('applicationId', 'string');
+            $jwtResolver->setAllowedTypes('auth_time', ['int', 'string']);
+            $jwtResolver->setAllowedTypes('authenticationType', 'string');
+            $jwtResolver->setAllowedTypes('sid', 'string');
+            $jwtResolver->setAllowedTypes('tid', 'string');
+            $jwtResolver->setAllowedTypes('tty', 'string');
+
+            return $jwtResolver->resolve($value);
+        });
+    }
+
+    public function validateAndBuildClaims(array $data, string $expectedApplicationId, bool $ignoreUndefined = true): JwtClaims
+    {
+        $validated = parent::validate($data, $ignoreUndefined);
+        $jwt = $validated['jwt'];
+
+        if ($jwt['applicationId'] !== $expectedApplicationId) {
+            throw new \InvalidArgumentException('Invalid application ID');
         }
 
-        $jwt = $data['jwt'];
-
-        if (!isset($jwt['applicationId']) || $jwt['applicationId'] !== $expectedApplicationId) {
-            throw new \RuntimeException('Invalid application ID');
-        }
-
-        if (!isset($jwt['exp']) || time() > (int) $jwt['exp']) {
-            throw new \RuntimeException('Session has expired');
+        if (time() > (int) $jwt['exp']) {
+            throw new \InvalidArgumentException('Session has expired');
         }
 
         return new JwtClaims(
