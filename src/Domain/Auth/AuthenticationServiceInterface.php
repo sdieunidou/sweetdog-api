@@ -6,7 +6,7 @@ namespace Domain\Auth;
 
 interface AuthenticationServiceInterface
 {
-    public function authenticateUser(string $email, string $password, string $ipAddress): AuthenticationResponse;
+    public function authenticateUser(string $email, string $password, string $ipAddress): AuthenticationResult;
 
-    public function decodeAndValidateJwtToken(string $token): JwtClaims;
+    public function validateJwtAndGetClaims(string $token): JwtClaims;
 }

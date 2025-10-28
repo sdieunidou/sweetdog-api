@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Infrastructure\Auth\Symfony\Adapters;
 
-use Domain\Auth\AuthenticationResponse;
+use Domain\Auth\AuthenticationResult;
 use Domain\Auth\AuthenticationServiceInterface;
+use Domain\Auth\AuthTokens;
 use Domain\Auth\JwtClaims;
+use Domain\Auth\User;
 use Infrastructure\Auth\Symfony\Client\FusionAuthClient;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -20,7 +22,7 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
     ) {
     }
 
-    public function decodeAndValidateJwtToken(string $token): JwtClaims
+    public function validateJwtAndGetClaims(string $token): JwtClaims
     {
         $data = $this->fusionAuthClient->validateJwtToken($token);
 
@@ -34,8 +36,11 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
             throw new \RuntimeException('Invalid application ID');
         }
 
+        if (time() > $jwt['exp']) {
+            throw new \RuntimeException('Session has expired');
+        }
+
         $this->verifyUserIsActive($jwt['sub']);
-        $this->verifySessionNotExpired($jwt['exp'], $token);
 
         return new JwtClaims(
             aud: $jwt['aud'],
@@ -53,7 +58,7 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
         );
     }
 
-    public function authenticateUser(string $email, string $password, string $ipAddress): AuthenticationResponse
+    public function authenticateUser(string $email, string $password, string $ipAddress): AuthenticationResult
     {
         $data = $this->fusionAuthClient->login([
             'applicationId' => $this->fusionAuthApplicationId,
@@ -85,17 +90,20 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
             throw new \RuntimeException('User account is not active');
         }
 
-        return new AuthenticationResponse(
+        $user = User::create(
+            roles: $registration['roles'],
+            id: $data['user']['id'],
+        );
+
+        $tokens = new AuthTokens(
             token: $data['token'],
             refreshToken: $data['refreshToken'],
             tokenExpirationInstant: (int) $data['tokenExpirationInstant'],
-            active: $data['user']['active'],
-            email: $data['user']['email'],
-            preferredLanguages: $data['user']['preferredLanguages'],
-            roles: $registration['roles'],
-            birthDate: $data['user']['birthDate'] ?? null,
-            lastName: $data['user']['lastName'] ?? null,
-            firstName: $data['user']['firstName'] ?? null,
+        );
+
+        return new AuthenticationResult(
+            user: $user,
+            tokens: $tokens,
         );
     }
 
@@ -108,6 +116,19 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
             'token',
             'refreshToken',
             'tokenExpirationInstant',
+        ]);
+
+        $resolver->resolve($data);
+
+        $this->validateUserResponseData($data);
+    }
+
+    private function validateUserResponseData(array $data): void
+    {
+        $resolver = new OptionsResolver();
+        $resolver->setIgnoreUndefined(true);
+
+        $resolver->setRequired([
             'user',
         ]);
 
@@ -144,18 +165,10 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
     {
         $data = $this->fusionAuthClient->getUser($userId);
 
-        if (!isset($data['user']['active']) || true !== $data['user']['active']) {
+        $this->validateUserResponseData($data);
+
+        if (true !== $data['user']['active']) {
             throw new \RuntimeException('User account has been deactivated');
-        }
-    }
-
-    private function verifySessionNotExpired(int $expirationTimestamp, string $token): void
-    {
-        // 1. Vérifier que le token n'est pas expiré temporellement
-        $currentTimestamp = time();
-
-        if ($currentTimestamp >= $expirationTimestamp) {
-            throw new \RuntimeException('Session has expired');
         }
     }
 }

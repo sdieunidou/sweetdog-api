@@ -18,7 +18,7 @@ final readonly class LoginUseCase
     public function __invoke(LoginCommand $command): LoginResponse
     {
         try {
-            $authenticationResponse = $this->authenticationService->authenticateUser($command->email, $command->password, $command->ipAddress);
+            $authenticationResult = $this->authenticationService->authenticateUser($command->email, $command->password, $command->ipAddress);
         } catch (\Throwable $e) {
             $this->logger->error('Failed to login', [
                 'error' => $e->getMessage(),
@@ -29,9 +29,9 @@ final readonly class LoginUseCase
         }
 
         return LoginResponse::create(
-            token: $authenticationResponse->token,
-            refreshToken: $authenticationResponse->refreshToken,
-            tokenExpirationInstant: $authenticationResponse->tokenExpirationInstant,
+            token: $authenticationResult->tokens->token,
+            refreshToken: $authenticationResult->tokens->refreshToken,
+            tokenExpirationInstant: $authenticationResult->tokens->tokenExpirationInstant,
         );
     }
 }

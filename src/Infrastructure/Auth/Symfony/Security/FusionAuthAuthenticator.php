@@ -39,13 +39,12 @@ final class FusionAuthAuthenticator extends AbstractAuthenticator
         }
 
         try {
-            $validatedToken = $this->fusionAuthAuthenticationAdapter->decodeAndValidateJwtToken($token);
+            $jwtClaims = $this->fusionAuthAuthenticationAdapter->validateJwtAndGetClaims($token);
         } catch (\Throwable $e) {
             throw new CustomUserMessageAuthenticationException('Invalid token', previous: $e);
         }
 
-        $user = $this->userRepository->findByIdentity($validatedToken->sub);
-
+        $user = $this->userRepository->findByIdentity($jwtClaims->sub);
         if (!$user) {
             throw new CustomUserMessageAuthenticationException('User not found');
         }

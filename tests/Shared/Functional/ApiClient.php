@@ -71,7 +71,7 @@ abstract class ApiClient
         $data = json_decode($this->getResponse()->getContent(), true);
 
         if (empty($data['token'])) {
-            throw new \Exception('Failed to fetch JWT token');
+            throw new \RuntimeException('Failed to fetch JWT token');
         }
 
         return $data['token'];
