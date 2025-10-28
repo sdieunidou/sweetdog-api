@@ -27,7 +27,6 @@ final class LoginResponseValidator extends AbstractOptionsResolverValidator
     {
         $validatedData = parent::validate($data, $ignoreUndefined);
 
-        // Valide également les données utilisateur
         $this->userResponseValidator->validate($data, $ignoreUndefined);
 
         return $validatedData;

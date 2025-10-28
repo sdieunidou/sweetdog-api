@@ -83,13 +83,11 @@ trait CommonAssertions
             $responseData = $this->getResponseData();
         }
 
-        // 1. Vérifier la structure de la réponse d'erreur
         $this->assertArrayHasKey('type', $responseData);
         $this->assertArrayHasKey('title', $responseData);
         $this->assertArrayHasKey('status', $responseData);
         $this->assertArrayHasKey('detail', $responseData);
 
-        // 2. Vérifier la structure des violations
         $this->assertArrayHasKey('violations', $responseData);
         $this->assertIsArray($responseData['violations']);
         $this->assertGreaterThan(0, count($responseData['violations']));
@@ -102,7 +100,6 @@ trait CommonAssertions
             $this->assertArrayHasKey('type', $violation);
         }
 
-        // 3. Vérifier le contenu des erreurs si fourni
         if (!empty($expectedErrors)) {
             foreach ($expectedErrors as $expectedError) {
                 $this->assertStringContainsString($expectedError, $responseData['detail'] ?? '');
