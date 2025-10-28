@@ -10,8 +10,10 @@ use Domain\Auth\AuthTokens;
 use Domain\Auth\JwtClaims;
 use Domain\Auth\User;
 use Infrastructure\Auth\Symfony\Client\FusionAuthClient;
+use Infrastructure\Auth\Symfony\Validators\JwtClaimsResponseValidator;
+use Infrastructure\Auth\Symfony\Validators\LoginResponseValidator;
+use Infrastructure\Auth\Symfony\Validators\UserResponseValidator;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\OptionsResolver\OptionsResolver;
 
 final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInterface
 {
@@ -25,37 +27,11 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
     public function validateJwtAndGetClaims(string $token): JwtClaims
     {
         $data = $this->fusionAuthClient->validateJwtToken($token);
+        $claims = (new JwtClaimsResponseValidator())->validateAndBuildClaims($data, $this->fusionAuthApplicationId);
 
-        if (!isset($data['jwt']) || !is_array($data['jwt'])) {
-            throw new \RuntimeException('Invalid JWT validation');
-        }
+        $this->verifyUserIsActive($claims->sub);
 
-        $jwt = $data['jwt'];
-
-        if (!isset($jwt['applicationId']) || $jwt['applicationId'] !== $this->fusionAuthApplicationId) {
-            throw new \RuntimeException('Invalid application ID');
-        }
-
-        if (time() > $jwt['exp']) {
-            throw new \RuntimeException('Session has expired');
-        }
-
-        $this->verifyUserIsActive($jwt['sub']);
-
-        return new JwtClaims(
-            aud: $jwt['aud'],
-            exp: (int) $jwt['exp'],
-            iat: (int) $jwt['iat'],
-            iss: $jwt['iss'],
-            jti: $jwt['jti'],
-            sub: $jwt['sub'],
-            applicationId: $jwt['applicationId'],
-            authTime: (int) $jwt['auth_time'],
-            authenticationType: $jwt['authenticationType'],
-            sid: $jwt['sid'],
-            tid: $jwt['tid'],
-            tty: $jwt['tty'],
-        );
+        return $claims;
     }
 
     public function authenticateUser(string $email, string $password, string $ipAddress): AuthenticationResult
@@ -68,7 +44,7 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
             'ipAddress' => $ipAddress,
         ]);
 
-        $this->validateLoginResponseData($data);
+        (new LoginResponseValidator())->validate($data);
 
         if (!isset($data['user']['registrations']) || !is_array($data['user']['registrations'])) {
             throw new \RuntimeException('User registrations not found in FusionAuth response');
@@ -107,65 +83,11 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
         );
     }
 
-    private function validateLoginResponseData(array $data): void
-    {
-        $resolver = new OptionsResolver();
-        $resolver->setIgnoreUndefined(true);
-
-        $resolver->setRequired([
-            'token',
-            'refreshToken',
-            'tokenExpirationInstant',
-        ]);
-
-        $resolver->resolve($data);
-
-        $this->validateUserResponseData($data);
-    }
-
-    private function validateUserResponseData(array $data): void
-    {
-        $resolver = new OptionsResolver();
-        $resolver->setIgnoreUndefined(true);
-
-        $resolver->setRequired([
-            'user',
-        ]);
-
-        $resolver->setAllowedTypes('user', 'array');
-        $resolver->setNormalizer('user', function ($options, $value) {
-            $userResolver = new OptionsResolver();
-            $userResolver->setIgnoreUndefined(true);
-
-            $userResolver->setRequired([
-                'active',
-                'email',
-                'preferredLanguages',
-            ]);
-
-            $userResolver->setDefined([
-                'birthDate',
-                'lastName',
-                'firstName',
-            ]);
-
-            $userResolver->setDefaults([
-                'birthDate' => null,
-                'lastName' => null,
-                'firstName' => null,
-            ]);
-
-            return $userResolver->resolve($value);
-        });
-
-        $resolver->resolve($data);
-    }
-
     private function verifyUserIsActive(string $userId): void
     {
         $data = $this->fusionAuthClient->getUser($userId);
 
-        $this->validateUserResponseData($data);
+        (new UserResponseValidator())->validate($data);
 
         if (true !== $data['user']['active']) {
             throw new \RuntimeException('User account has been deactivated');

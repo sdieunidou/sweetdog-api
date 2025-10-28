@@ -44,7 +44,9 @@ final class User implements UserInterface
 
     public function getRoles(): array
     {
-        return array_merge($this->roles, ['ROLE_USER']);
+        $roles = array_merge($this->roles, ['ROLE_USER']);
+
+        return array_values(array_unique($roles));
     }
 
     public function eraseCredentials(): void
