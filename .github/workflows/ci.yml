@@ -80,6 +80,9 @@ jobs:
       - name: Lint YAML files
         run: bin/console lint:yaml config/
 
+      - name: Wait before running tests
+        run: sleep 60
+
       - name: Run tests
         run: make tests
 
