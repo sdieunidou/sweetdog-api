@@ -48,6 +48,26 @@ jobs:
             sleep 2
           done
 
+      - name: Wait for FusionAuth to be ready
+        run: |
+          DOCKER_CMD="${{ steps.docker-compose.outputs.cmd }}"
+          echo "Waiting for FusionAuth to be ready..."
+          max_attempts=60
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -f -s http://localhost:9011/api/status > /dev/null 2>&1; then
+              echo "FusionAuth is ready!"
+              break
+            fi
+            echo "Waiting for FusionAuth... (attempt $((attempt+1))/$max_attempts)"
+            sleep 5
+            attempt=$((attempt+1))
+          done
+          if [ $attempt -eq $max_attempts ]; then
+            echo "FusionAuth failed to start after $max_attempts attempts"
+            exit 1
+          fi
+
       - name: Composer security audit
         run: composer audit
 
