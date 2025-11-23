@@ -80,7 +80,7 @@ jobs:
         run: bin/console lint:yaml config/
 
       - name: Wait before running tests
-        run: sleep 30
+        run: sleep 60
 
       - name: Run tests
         run: make tests
