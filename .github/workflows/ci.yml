@@ -54,6 +54,12 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src/
 
+      - name: Lint Symfony container
+        run: bin/console lint:container
+
+      - name: Lint YAML files
+        run: bin/console lint:yaml config/
+
       - name: Run tests
         run: make tests
 
