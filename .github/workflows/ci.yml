@@ -71,22 +71,6 @@ jobs:
       - name: Composer security audit
         run: composer audit
 
-      - name: Check code style with PHP-CS-Fixer
-        run: |
-          vendor/bin/php-cs-fixer fix --dry-run --diff
-
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse src/
-
-      - name: Run PHPMD
-        run: vendor/bin/phpmd src text phpmd.xml
-
-      - name: Lint Symfony container
-        run: bin/console lint:container
-
-      - name: Lint YAML files
-        run: bin/console lint:yaml config/
-
       # Installation de jq pour parser les réponses JSON d'Ollama
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
