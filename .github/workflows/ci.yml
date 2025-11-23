@@ -94,90 +94,97 @@ jobs:
       - name: Pull LLM model
         run: |
           ollama pull llama3.2
-
-      - name: SOLID check with Ollama
-        id: solid-check
-        continue-on-error: false
-        run: |
-          # Déterminer la référence de base selon le contexte
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_REF="${{ github.event.pull_request.base.sha }}"
-            HEAD_REF="${{ github.event.pull_request.head.sha }}"
-          else
-            BASE_REF="${{ github.event.before }}"
-            HEAD_REF="${{ github.sha }}"
-          fi
-
-          echo "Base ref: $BASE_REF"
-          echo "Head ref: $HEAD_REF"
-
-          # Exécuter l'analyse SOLID en PHP
-          php .github/scripts/check-solid.php llama3.2 "$BASE_REF" "$HEAD_REF"
-
-          # Récupérer le chemin du rapport généré
-          REPORT_FILE="${GITHUB_WORKSPACE}/.github/solid-reports/solid-report.md"
-          if [ -f "$REPORT_FILE" ]; then
-            echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
-            echo "report_exists=true" >> $GITHUB_OUTPUT
-            echo ""
-            echo "📋 Rapport SOLID généré:"
-            cat "$REPORT_FILE"
-          else
-            echo "report_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Aucun rapport généré (peut-être aucun fichier PHP modifié)"
-          fi
-
+          - name: SOLID check with Ollama
+          id: solid-check
+          # ⚠️ On laisse le script PHP faire exit 1,
+          # mais on dit à GitHub "ne stoppe pas le job pour autant"
+          continue-on-error: true
+          run: |
+            # Déterminer la référence de base selon le contexte
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              BASE_REF="${{ github.event.pull_request.base.sha }}"
+              HEAD_REF="${{ github.event.pull_request.head.sha }}"
+            else
+              BASE_REF="${{ github.event.before }}"
+              HEAD_REF="${{ github.sha }}"
+            fi
+  
+            echo "Base ref: $BASE_REF"
+            echo "Head ref: $HEAD_REF"
+  
+            php .github/scripts/check-solid.php llama3.2 "$BASE_REF" "$HEAD_REF"
+  
+            REPORT_FILE="${GITHUB_WORKSPACE}/.github/solid-reports/solid-report.md"
+            if [ -f "$REPORT_FILE" ]; then
+              echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
+              echo "report_exists=true" >> $GITHUB_OUTPUT
+              echo ""
+              echo "📋 Rapport SOLID généré:"
+              cat "$REPORT_FILE"
+            else
+              echo "report_exists=false" >> $GITHUB_OUTPUT
+              echo "⚠️ Aucun rapport généré (peut-être aucun fichier PHP modifié)"
+            fi
+  
       - name: Comment PR with SOLID report
-        if: github.event_name == 'pull_request' && steps.solid-check.outputs.report_exists == 'true'
+          # 👉 always() pour qu'il s'exécute même si le step précédent a "fail"
+        if: always() && github.event_name == 'pull_request' && steps.solid-check.outputs.report_exists == 'true'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const reportFile = '${{ steps.solid-check.outputs.report_file }}';
-            
-            let report = '## 🔍 Analyse SOLID\n\n';
-            report += 'Analyse automatique des principes SOLID effectuée sur les fichiers PHP modifiés.\n\n';
-            report += '---\n\n';
-            
-            try {
-              if (fs.existsSync(reportFile)) {
-                const content = fs.readFileSync(reportFile, 'utf8');
-                report += content;
-              } else {
-                report += '⚠️ Impossible de récupérer le rapport complet. Consultez les logs de la CI pour plus de détails.';
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+            script: |
+              const fs = require('fs');
+              const reportFile = '${{ steps.solid-check.outputs.report_file }}';
+              
+              let report = '## 🔍 Analyse SOLID\n\n';
+              report += 'Analyse automatique des principes SOLID effectuée sur les fichiers PHP modifiés.\n\n';
+              report += '---\n\n';
+              
+              try {
+                if (fs.existsSync(reportFile)) {
+                  const content = fs.readFileSync(reportFile, 'utf8');
+                  report += content;
+                } else {
+                  report += '⚠️ Impossible de récupérer le rapport complet. Consultez les logs de la CI pour plus de détails.';
+                }
+              } catch (error) {
+                report += `⚠️ Erreur lors de la lecture du rapport: ${error.message}`;
               }
-            } catch (error) {
-              report += `⚠️ Erreur lors de la lecture du rapport: ${error.message}`;
-            }
-            
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
-              comment.body.includes('🔍 Analyse SOLID')
-            );
-            
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: report
-              });
-            } else {
-              await github.rest.issues.createComment({
+              
+              const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: report
               });
-            }
-
+              
+              const botComment = comments.find(comment => 
+                comment.user.type === 'Bot' && 
+                comment.body.includes('🔍 Analyse SOLID')
+              );
+              
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: report
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: report
+                });
+              }
+  
+      - name: Fail workflow if SOLID check failed
+          # 👉 on regarde si le step SOLID a eu outcome = failure
+        if: steps.solid-check.outcome == 'failure'
+        run: |
+            echo "❌ SOLID check a détecté des violations majeures."
+            exit 1
+  
       # --- Tests applicatifs ---
 
       - name: Wait before running tests
