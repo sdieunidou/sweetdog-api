@@ -2,10 +2,14 @@ name: CI
 
 on:
   push:
+  pull_request:
 
 jobs:
   ci:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # pour commenter sur un commit
+      pull-requests: write   # pour commenter sur une PR
 
     steps:
       - name: Checkout code
@@ -109,6 +113,8 @@ jobs:
       - name: SOLID check with Ollama
         id: solid-check
         run: |
+          set -o pipefail
+
           # Déterminer la référence de base pour le diff
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_REF="${{ github.event.pull_request.base.sha }}"
@@ -121,9 +127,8 @@ jobs:
           echo "Base ref: $BASE_REF"
           echo "Head ref: $HEAD_REF"
 
-          # Exécuter le script PHP (on capture le code de sortie)
-          php .github/scripts/check-solid.php llama3.2 "$BASE_REF" "$HEAD_REF"
-          SOLID_EXIT_CODE=$?
+          SOLID_EXIT_CODE=0
+          php .github/scripts/check-solid.php llama3.2 "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
 
           echo "solid_exit_code=$SOLID_EXIT_CODE" >> $GITHUB_OUTPUT
 
@@ -135,10 +140,10 @@ jobs:
             cat "$REPORT_FILE"
           else
             echo "report_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Aucun rapport généré (peut-être aucun fichier PHP modifié)"
+            echo "⚠️ Aucun rapport généré (peut-être aucun fichier PHP modifié dans src/ ou tests/)"
           fi
 
-          # On ne fait PAS échouer ce step, on délègue ça plus bas
+          # Ne pas faire échouer ce step, on failera plus tard
           exit 0
 
       - name: Ajouter le rapport SOLID au check
@@ -148,11 +153,59 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           cat "${{ steps.solid-check.outputs.report_file }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: Fail workflow if SOLID check failed
-        if: steps.solid-check.outputs.solid_exit_code != '0'
-        run: |
-          echo "❌ SOLID check a détecté des violations SOLID majeures."
-          exit 1
+      - name: Comment PR avec le rapport SOLID
+        if: github.event_name == 'pull_request' && steps.solid-check.outputs.report_exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            try {
+              const reportFile = '${{ steps.solid-check.outputs.report_file }}';
+              const content = fs.readFileSync(reportFile, 'utf8');
+
+              let body = '## 🔍 Analyse SOLID (IA)\n\n';
+              body += 'Analyse automatique des principes SOLID sur les fichiers PHP modifiés (src/ et tests/).\n\n';
+              body += '---\n\n';
+              body += content;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            } catch (error) {
+              console.log('⚠️ Impossible de poster le commentaire SOLID sur la PR :', error.message);
+            }
+
+      - name: Comment commit avec le rapport SOLID
+        if: github.event_name == 'push' && steps.solid-check.outputs.report_exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            try {
+              const reportFile = '${{ steps.solid-check.outputs.report_file }}';
+              const content = fs.readFileSync(reportFile, 'utf8');
+
+              let body = '🔍 **Analyse SOLID (IA)**\n\n';
+              body += 'Analyse automatique des principes SOLID sur les fichiers PHP modifiés (src/ et tests/).\n\n';
+              body += '---\n\n';
+              body += content;
+
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                body,
+              });
+            } catch (error) {
+              console.log('⚠️ Impossible de poster le commentaire SOLID sur le commit :', error.message);
+            }
 
       # --- Tests applicatifs ---
 
@@ -165,3 +218,9 @@ jobs:
       - name: Stop Docker Compose services
         if: always()
         run: ${{ steps.docker-compose.outputs.cmd }} down -v
+
+      - name: Fail workflow if SOLID check failed
+        if: always() && steps.solid-check.outputs.solid_exit_code != '0'
+        run: |
+          echo "❌ SOLID check a détecté des violations SOLID majeures."
+          exit 1

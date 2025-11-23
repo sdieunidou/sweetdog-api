@@ -199,17 +199,29 @@ PROMPT;
 }
 
 /**
+ * Échappe un texte pour les "workflow commands" GitHub (annotations).
+ * On doit encoder %, \r, \n.
+ */
+function escapeForGithubCommand(string $text): string
+{
+    return strtr($text, [
+        '%'  => '%25',
+        "\r" => '%0D',
+        "\n" => '%0A',
+    ]);
+}
+
+/**
  * Émet une annotation GitHub (warning/error) pour afficher un message sur une ligne de fichier.
+ * On autorise des messages multi-lignes via l'encodage %0A.
  */
 function emitAnnotation(string $severity, string $file, ?int $line, string $title, string $message): void
 {
-    // Normalisation de la sévérité
     $severity = strtolower($severity);
     $level    = $severity === 'major' ? 'error' : 'warning';
 
-    // On nettoie le message/titre pour éviter de casser la syntaxe ::...::
-    $titleSafe   = str_replace(['%', "\r", "\n"], [' ', ' ', ' '], $title);
-    $messageSafe = str_replace(['%', "\r", "\n"], [' ', ' ', ' '], $message);
+    $titleSafe   = escapeForGithubCommand($title);
+    $messageSafe = escapeForGithubCommand($message);
 
     if ($line !== null && $line > 0) {
         printf(
@@ -368,14 +380,18 @@ foreach ($files as $file) {
             $report .= "\n";
         }
 
-        // Annotation GitHub pour ce problème (major + minor)
-        $title   = "SOLID {$principle} ({$severity})";
+        // --- Annotation GitHub multi-ligne pour ce problème ---
+        $title = "SOLID {$principle} ({$severity})";
+
         $message = $summary;
         if ($suggest !== '') {
-            $message .= ' — ' . $suggest;
+            $message .= "\nSuggestion : " . $suggest;
         }
         if (!empty($steps)) {
-            $message .= ' — Étapes: ' . implode(' | ', $steps);
+            $message .= "\nÉtapes de refactorisation :";
+            foreach ($steps as $step) {
+                $message .= "\n- " . $step;
+            }
         }
 
         emitAnnotation($severity, $file, $line, $title, $message);
