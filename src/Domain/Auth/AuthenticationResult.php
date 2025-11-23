@@ -9,6 +9,5 @@ final readonly class AuthenticationResult
     public function __construct(
         public User $user,
         public AuthTokens $tokens,
-    ) {
-    }
+    ) {}
 }

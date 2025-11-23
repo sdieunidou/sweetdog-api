@@ -20,8 +20,7 @@ final class LoginController extends AbstractController
 {
     public function __construct(
         private readonly LoginUseCase $loginUseCase,
-    ) {
-    }
+    ) {}
 
     public function __invoke(#[MapRequestPayload] LoginRequest $loginRequest, Request $request): JsonResponse
     {

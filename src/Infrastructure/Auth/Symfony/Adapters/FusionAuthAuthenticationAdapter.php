@@ -24,8 +24,7 @@ final class FusionAuthAuthenticationAdapter implements AuthenticationServiceInte
         private readonly UserResponseValidator $userResponseValidator,
         #[Autowire('%env(FUSIONAUTH_APPLICATION_ID)%')]
         private readonly string $fusionAuthApplicationId,
-    ) {
-    }
+    ) {}
 
     public function validateJwtAndGetClaims(string $token): JwtClaims
     {

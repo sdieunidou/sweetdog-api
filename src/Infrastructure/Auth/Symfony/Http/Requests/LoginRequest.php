@@ -12,10 +12,8 @@ final readonly class LoginRequest
         #[Assert\NotBlank(message: 'L\'email ne peut pas être vide')]
         #[Assert\Email(message: 'L\'email n\'est pas valide')]
         public string $email = '',
-
         #[Assert\NotBlank(message: 'Le mot de passe ne peut pas être vide')]
         #[Assert\Length(min: 6, max: 20, minMessage: 'Le mot de passe doit contenir au moins {{ limit }} caractères', maxMessage: 'Le mot de passe ne peut pas dépasser {{ limit }} caractères')]
         public string $password = '',
-    ) {
-    }
+    ) {}
 }

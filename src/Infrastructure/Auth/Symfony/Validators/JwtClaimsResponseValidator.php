@@ -10,6 +10,35 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 final class JwtClaimsResponseValidator extends AbstractOptionsResolverValidator
 {
+    public function validateAndBuildClaims(array $data, string $expectedApplicationId, bool $ignoreUndefined = true): JwtClaims
+    {
+        $validated = parent::validate($data, $ignoreUndefined);
+        $jwt = $validated['jwt'];
+
+        if ($jwt['applicationId'] !== $expectedApplicationId) {
+            throw new \InvalidArgumentException('Invalid application ID');
+        }
+
+        if (time() > (int) $jwt['exp']) {
+            throw new \InvalidArgumentException('Session has expired');
+        }
+
+        return new JwtClaims(
+            aud: $jwt['aud'],
+            exp: (int) $jwt['exp'],
+            iat: (int) $jwt['iat'],
+            iss: $jwt['iss'],
+            jti: $jwt['jti'],
+            sub: $jwt['sub'],
+            applicationId: $jwt['applicationId'],
+            authTime: (int) $jwt['auth_time'],
+            authenticationType: $jwt['authenticationType'],
+            sid: $jwt['sid'],
+            tid: $jwt['tid'],
+            tty: $jwt['tty'],
+        );
+    }
+
     protected function configureResolver(OptionsResolver $resolver): void
     {
         $resolver->setRequired(['jwt']);
@@ -48,34 +77,5 @@ final class JwtClaimsResponseValidator extends AbstractOptionsResolverValidator
 
             return $jwtResolver->resolve($value);
         });
-    }
-
-    public function validateAndBuildClaims(array $data, string $expectedApplicationId, bool $ignoreUndefined = true): JwtClaims
-    {
-        $validated = parent::validate($data, $ignoreUndefined);
-        $jwt = $validated['jwt'];
-
-        if ($jwt['applicationId'] !== $expectedApplicationId) {
-            throw new \InvalidArgumentException('Invalid application ID');
-        }
-
-        if (time() > (int) $jwt['exp']) {
-            throw new \InvalidArgumentException('Session has expired');
-        }
-
-        return new JwtClaims(
-            aud: $jwt['aud'],
-            exp: (int) $jwt['exp'],
-            iat: (int) $jwt['iat'],
-            iss: $jwt['iss'],
-            jti: $jwt['jti'],
-            sub: $jwt['sub'],
-            applicationId: $jwt['applicationId'],
-            authTime: (int) $jwt['auth_time'],
-            authenticationType: $jwt['authenticationType'],
-            sid: $jwt['sid'],
-            tid: $jwt['tid'],
-            tty: $jwt['tty'],
-        );
     }
 }

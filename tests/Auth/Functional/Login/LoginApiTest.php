@@ -8,14 +8,14 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Tests\Auth\Functional\AuthApiClient;
 use Tests\Shared\Functional\CommonAssertions;
 
+/**
+ * @internal
+ *
+ * @coversNothing
+ */
 class LoginApiTest extends WebTestCase
 {
     use CommonAssertions;
-
-    private function createApiClient(): AuthApiClient
-    {
-        return new AuthApiClient(static::createClient(), $this);
-    }
 
     public function testLoginSuccess(): void
     {
@@ -46,5 +46,10 @@ class LoginApiTest extends WebTestCase
         $this->assertGreaterThan(0, $responseData['tokenExpirationInstant']);
 
         return $this;
+    }
+
+    private function createApiClient(): AuthApiClient
+    {
+        return new AuthApiClient(static::createClient(), $this);
     }
 }

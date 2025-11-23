@@ -25,7 +25,8 @@ class ContactRequestBuilder
     public function withValidData(): self
     {
         return $this->withSubject('Valid Subject')
-                    ->withMessage('Valid message with enough characters');
+            ->withMessage('Valid message with enough characters')
+        ;
     }
 
     public function withShortSubject(): self
@@ -66,7 +67,8 @@ class ContactRequestBuilder
     public function withSpecialCharacters(): self
     {
         return $this->withSubject('Test Subject with valid chars 123, 456! 789?')
-                    ->withMessage('Test Message with valid special characters: 123, 456! 789? ; "quotes" and (parentheses)');
+            ->withMessage('Test Message with valid special characters: 123, 456! 789? ; "quotes" and (parentheses)')
+        ;
     }
 
     public function build(): array

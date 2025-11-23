@@ -28,7 +28,14 @@ tests:
 .PHONY: tests
 
 lint:
-	vendor/bin/php-cs-fixer fix src/
-	vendor/bin/php-cs-fixer fix tests/
-	vendor/bin/phpstan analyse src/
+	vendor/bin/php-cs-fixer fix
 .PHONY: lint
+
+ci-check:
+	vendor/bin/php-cs-fixer fix --dry-run --diff
+	vendor/bin/phpstan analyse src/
+	vendor/bin/phpmd src text phpmd.xml
+	vendor/bin/deptrac
+	bin/console lint:container
+	bin/console lint:yaml config/
+.PHONY: ci-check

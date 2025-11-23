@@ -22,9 +22,12 @@ final class FusionAuthAuthenticator extends AbstractAuthenticator
     public function __construct(
         private readonly FusionAuthAuthenticationAdapter $fusionAuthAuthenticationAdapter,
         private readonly UserRepositoryInterface $userRepository,
-    ) {
-    }
+    ) {}
 
+    /**
+     * @phpstan-ignore-next-line
+     * Type nullable required by parent class AbstractAuthenticator
+     */
     public function supports(Request $request): ?bool
     {
         return $request->headers->has('Authorization')
@@ -62,6 +65,10 @@ final class FusionAuthAuthenticator extends AbstractAuthenticator
         return null;
     }
 
+    /**
+     * @phpstan-ignore-next-line
+     * Type nullable required by parent class AbstractAuthenticator
+     */
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
     {
         $data = [

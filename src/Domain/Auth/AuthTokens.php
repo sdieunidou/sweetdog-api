@@ -10,6 +10,5 @@ final readonly class AuthTokens
         public string $token,
         public string $refreshToken,
         public int $tokenExpirationInstant,
-    ) {
-    }
+    ) {}
 }

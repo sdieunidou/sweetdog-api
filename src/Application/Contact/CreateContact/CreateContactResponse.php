@@ -12,12 +12,9 @@ final readonly class CreateContactResponse
     public function __construct(
         #[Groups(['contact:read'])]
         public int $id,
-
         #[Groups(['contact:read'])]
         public string $subject,
-
         #[Groups(['contact:read'])]
         public string $message,
-    ) {
-    }
+    ) {}
 }

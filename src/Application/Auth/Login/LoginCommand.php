@@ -10,6 +10,5 @@ final readonly class LoginCommand
         public string $email,
         public string $password,
         public string $ipAddress,
-    ) {
-    }
+    ) {}
 }

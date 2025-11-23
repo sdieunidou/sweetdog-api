@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_pgsql, intl, mbstring, zip, xml, dom
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Install Symfony CLI
+        run: |
+          curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | sudo -E bash
+          sudo apt install symfony-cli
+
+      - name: Set up Docker Compose
+        id: docker-compose
+        run: |
+          # Vérifier si docker-compose est disponible, sinon utiliser docker compose
+          if command -v docker-compose &> /dev/null; then
+            echo "cmd=docker-compose" >> $GITHUB_OUTPUT
+          else
+            echo "cmd=docker compose" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Start Docker Compose services
+        run: ${{ steps.docker-compose.outputs.cmd }} up -d
+
+      - name: Wait for database to be ready
+        run: |
+          DOCKER_CMD="${{ steps.docker-compose.outputs.cmd }}"
+          until $DOCKER_CMD exec -T database pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}; do
+            echo "Waiting for database..."
+            sleep 2
+          done
+
+      - name: Wait for FusionAuth to be ready
+        run: |
+          DOCKER_CMD="${{ steps.docker-compose.outputs.cmd }}"
+          echo "Waiting for FusionAuth to be ready..."
+          max_attempts=60
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -f -s http://localhost:9011/api/status > /dev/null 2>&1; then
+              echo "FusionAuth is ready!"
+              break
+            fi
+            echo "Waiting for FusionAuth... (attempt $((attempt+1))/$max_attempts)"
+            sleep 5
+            attempt=$((attempt+1))
+          done
+          if [ $attempt -eq $max_attempts ]; then
+            echo "FusionAuth failed to start after $max_attempts attempts"
+            exit 1
+          fi
+
+      - name: Composer security audit
+        run: composer audit
+
+      - name: Check code style with PHP-CS-Fixer
+        run: |
+          vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse src/
+
+      - name: Run PHPMD
+        run: vendor/bin/phpmd src text phpmd.xml
+
+      - name: Run Deptrac
+        run: vendor/bin/deptrac
+
+      - name: Lint Symfony container
+        run: bin/console lint:container
+
+      - name: Lint YAML files
+        run: bin/console lint:yaml config/
+
+      - name: Wait before running tests
+        run: sleep 60
+
+      - name: Run tests
+        run: make tests
+
+      - name: Stop Docker Compose services
+        if: always()
+        run: ${{ steps.docker-compose.outputs.cmd }} down -v
+
