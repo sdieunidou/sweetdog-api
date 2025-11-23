@@ -78,6 +78,9 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src/
 
+      - name: Run Deptrac
+        run: vendor/bin/deptrac
+
       - name: Lint Symfony container
         run: bin/console lint:container
 
