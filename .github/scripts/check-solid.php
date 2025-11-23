@@ -113,6 +113,10 @@ function extractJson(string $raw): ?array
  * Construit le prompt SOLID pour un fichier donné.
  * On demande des recommandations de refacto concrètes : noms de classes, services,
  * interfaces, signatures de méthodes, étapes de refactoring.
+ *
+ * ⚠️ On force :
+ *  - 1 problème précis par entrée dans "problems"
+ *  - principle = UNE seule valeur parmi SRP, OCP, LSP, ISP, DIP
  */
 function buildPrompt(string $filePath, string $fileContent): string
 {
@@ -129,9 +133,35 @@ Contexte :
 - Les contrôleurs doivent surtout orchestrer des services / use cases.
 - La logique métier, la validation, le cache, le logging, l'envoi d'emails doivent idéalement vivre dans des services dédiés.
 
-Pour chaque violation détectée :
+IMPORTANT : GRANULARITÉ DES PROBLÈMES
+
+Pour le tableau "problems" :
+
+1. Chaque entrée de "problems" doit représenter **UN SEUL problème précis** :
+   - un endroit du code
+   - un seul principe violé (SRP OU OCP OU LSP OU ISP OU DIP)
+   - un résumé clairement ciblé (pas un diagnostic global de toute la classe).
+
+2. Le champ "principle" doit contenir **exactement UNE valeur**, parmi :
+   - "SRP"
+   - "OCP"
+   - "LSP"
+   - "ISP"
+   - "DIP"
+
+   Tu NE DOIS PAS écrire de texte composite comme "SRP | OCP | LSP | ISP | DIP" ou plusieurs principes dans le même champ.
+
+3. Si tu détectes plusieurs problèmes pour le même principe à des endroits différents :
+   - tu dois créer **plusieurs entrées** dans "problems"
+   - par exemple 3 violations SRP → 3 objets séparés dans "problems" (avec des lignes différentes).
+
+4. Ne regroupe jamais plusieurs problèmes dans un seul objet de "problems".
+   Il vaut mieux créer plusieurs entrées courtes et précises qu'une seule entrée générale.
+
+Pour chaque problème détecté :
+
 1. **Summary**
-   - Résume le problème en 1 phrase claire.
+   - Résume le problème en 1 phrase claire, ciblée sur un cas précis.
 
 2. **Suggestion**
    - Donne une recommandation concrète de refactorisation en texte continu.
@@ -174,9 +204,9 @@ ou si problèmes détectés :
   "solid_ok": false,
   "problems": [
     {
-      "principle": "SRP | OCP | LSP | ISP | DIP",
-      "severity": "major | minor",
-      "summary": "Résumé court du problème",
+      "principle": "SRP",
+      "severity": "major",
+      "summary": "Résumé court d'un seul problème SRP précis",
       "suggestion": "Recommandation concrète de refactoring avec noms de classes/services/méthodes et logique à déplacer",
       "refactor_steps": [
         "Étape 1 de refactor",
