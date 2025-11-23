@@ -78,6 +78,9 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src/
 
+      - name: Run PHPMD
+        run: vendor/bin/phpmd src text phpmd.xml
+
       - name: Run Deptrac
         run: vendor/bin/deptrac
 
