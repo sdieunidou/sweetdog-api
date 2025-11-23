@@ -80,9 +80,6 @@ jobs:
 
       # --- IA / Ollama ---
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
       - name: Setup Ollama
         uses: ai-action/setup-ollama@v1
 
@@ -100,7 +97,6 @@ jobs:
 
       - name: SOLID check with Ollama
         id: solid-check
-        # mets à true si tu veux que la CI ne casse jamais à cause de l'IA
         continue-on-error: false
         run: |
           # Déterminer la référence de base selon le contexte
@@ -108,7 +104,6 @@ jobs:
             BASE_REF="${{ github.event.pull_request.base.sha }}"
             HEAD_REF="${{ github.event.pull_request.head.sha }}"
           else
-            # Pour les push, on utilise les SHA fournis par GitHub
             BASE_REF="${{ github.event.before }}"
             HEAD_REF="${{ github.sha }}"
           fi
@@ -116,10 +111,8 @@ jobs:
           echo "Base ref: $BASE_REF"
           echo "Head ref: $HEAD_REF"
 
-          chmod +x ./.github/scripts/check-solid.sh
-
-          # Exécuter l'analyse SOLID (le script fait exit 1 si violations majeures)
-          ./.github/scripts/check-solid.sh llama3.2 "$BASE_REF" "$HEAD_REF"
+          # Exécuter l'analyse SOLID en PHP
+          php .github/scripts/check-solid.php llama3.2 "$BASE_REF" "$HEAD_REF"
 
           # Récupérer le chemin du rapport généré
           REPORT_FILE="${GITHUB_WORKSPACE}/.github/solid-reports/solid-report.md"
