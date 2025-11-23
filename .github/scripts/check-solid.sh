@@ -106,8 +106,7 @@ $(cat "$FILE")"
   # 1) Nettoyer les séquences ANSI (spinner, couleurs, etc.)
   CLEAN_RESPONSE=$(printf "%s\n" "$RAW_RESPONSE" | sed -r 's/\x1B\[[0-9;?]*[ -/]*[@-~]//g')
 
-  # 2) Essayer d'extraire un bloc JSON à partir de la première ligne contenant un guillemet et un ":"
-  # (typiquement la ligne "file": "...", etc.)
+  # 2) Essayer d'extraire un bloc JSON à partir d'une ligne qui ressemble à du JSON
   JSON_RESPONSE=$(printf "%s\n" "$CLEAN_RESPONSE" | awk 'found{print} /"[a-zA-Z0-9_]+":/{if(!found){found=1; print}}')
 
   # Si on n'a rien, tenter à partir de la première accolade
@@ -123,28 +122,28 @@ $(cat "$FILE")"
     continue
   fi
 
-  # 3) Si ça ne commence pas par une accolade, on entoure avec { ... }
-  if ! echo "$JSON_RESPONSE" | grep -q '^{'; then
-    JSON_RESPONSE="{\n$JSON_RESPONSE\n}"
-  fi
+  # 3) Interpréter les séquences \n comme des vraies nouvelles lignes
+  JSON_RESPONSE=$(printf "%b" "$JSON_RESPONSE")
 
-  # 4) Si ça ne finit pas par une accolade, on ajoute "}"
-  if ! echo "$JSON_RESPONSE" | grep -q '}$'; then
-    JSON_RESPONSE="$JSON_RESPONSE\n}"
-  fi
-
-  # 5) Vérifier que c'est bien du JSON
-  if ! echo "$JSON_RESPONSE" | jq . >/dev/null 2>&1; then
-    echo "⚠️  JSON invalide pour $FILE, ignoré."
-    echo "JSON candidat (extrait) :"
-    echo "$JSON_RESPONSE" | head -40
-    echo ""
-    continue
+  # 4) Tenter un premier parse direct
+  if echo "$JSON_RESPONSE" | jq . >/dev/null 2>&1; then
+    :
+  else
+    # Si ça casse, on tente une version sans la dernière ligne (souvent une accolade en trop)
+    TRIMMED=$(printf "%s\n" "$JSON_RESPONSE" | sed '$d')
+    if echo "$TRIMMED" | jq . >/dev/null 2>&1; then
+      JSON_RESPONSE="$TRIMMED"
+    else
+      echo "⚠️  JSON invalide pour $FILE, ignoré."
+      echo "JSON candidat (extrait) :"
+      echo "$JSON_RESPONSE" | head -40
+      echo ""
+      continue
+    fi
   fi
 
   echo "📊 Résultat de l'analyse:"
   echo "$JSON_RESPONSE" | jq .
-
 
 
   SOLID_OK=$(echo "$JSON_RESPONSE" | jq -r '.solid_ok // false')
