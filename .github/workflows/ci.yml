@@ -11,6 +11,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # IMPORTANT : nécessaire pour que git diff voie le commit de base
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -71,15 +74,33 @@ jobs:
       - name: Composer security audit
         run: composer audit
 
-      # Installation de jq pour parser les réponses JSON d'Ollama
+      - name: Check code style with PHP-CS-Fixer
+        run: |
+          vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse src/
+
+      - name: Run PHPMD
+        run: vendor/bin/phpmd src text phpmd.xml
+
+      - name: Run Deptrac
+        run: vendor/bin/deptrac
+
+      - name: Lint Symfony container
+        run: bin/console lint:container
+
+      - name: Lint YAML files
+        run: bin/console lint:yaml config/
+
+      # --- IA / Ollama ---
+
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # Installation d'Ollama pour l'analyse SOLID
       - name: Setup Ollama
         uses: ai-action/setup-ollama@v1
 
-      # Cache des modèles Ollama pour accélérer les runs
       - name: Cache Ollama models
         uses: actions/cache@v4
         with:
@@ -88,29 +109,33 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-ollama-
 
-      # Télécharger le modèle LLM (llama3.2 est un bon compromis vitesse/qualité)
       - name: Pull LLM model
         run: |
           ollama pull llama3.2
 
-      # Analyse SOLID avec Ollama sur les fichiers PHP modifiés
       - name: SOLID check with Ollama
         id: solid-check
-        continue-on-error: true
+        # mets à true si tu veux que la CI ne casse jamais à cause de l'IA
+        continue-on-error: false
         run: |
           # Déterminer la référence de base selon le contexte
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_REF="${{ github.event.pull_request.base.sha }}"
             HEAD_REF="${{ github.event.pull_request.head.sha }}"
           else
-            # Pour les pushes, comparer avec le commit précédent
-            BASE_REF="HEAD^"
-            HEAD_REF="HEAD"
+            # Pour les push, on utilise les SHA fournis par GitHub
+            BASE_REF="${{ github.event.before }}"
+            HEAD_REF="${{ github.sha }}"
           fi
 
-          # Exécuter l'analyse SOLID
-          ./.github/scripts/check-solid.sh llama3.2 "$BASE_REF" "$HEAD_REF" || true
-          
+          echo "Base ref: $BASE_REF"
+          echo "Head ref: $HEAD_REF"
+
+          chmod +x ./.github/scripts/check-solid.sh
+
+          # Exécuter l'analyse SOLID (le script fait exit 1 si violations majeures)
+          ./.github/scripts/check-solid.sh llama3.2 "$BASE_REF" "$HEAD_REF"
+
           # Récupérer le chemin du rapport généré
           REPORT_FILE="${GITHUB_WORKSPACE}/.github/solid-reports/solid-report.md"
           if [ -f "$REPORT_FILE" ]; then
@@ -124,7 +149,6 @@ jobs:
             echo "⚠️ Aucun rapport généré (peut-être aucun fichier PHP modifié)"
           fi
 
-      # Poster un commentaire sur la PR avec le rapport SOLID
       - name: Comment PR with SOLID report
         if: github.event_name == 'pull_request' && steps.solid-check.outputs.report_exists == 'true'
         uses: actions/github-script@v7
@@ -149,7 +173,6 @@ jobs:
               report += `⚠️ Erreur lors de la lecture du rapport: ${error.message}`;
             }
             
-            // Chercher un commentaire existant de cette action
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -162,7 +185,6 @@ jobs:
             );
             
             if (botComment) {
-              // Mettre à jour le commentaire existant
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -170,7 +192,6 @@ jobs:
                 body: report
               });
             } else {
-              // Créer un nouveau commentaire
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -178,6 +199,8 @@ jobs:
                 body: report
               });
             }
+
+      # --- Tests applicatifs ---
 
       - name: Wait before running tests
         run: sleep 60
@@ -188,4 +211,3 @@ jobs:
       - name: Stop Docker Compose services
         if: always()
         run: ${{ steps.docker-compose.outputs.cmd }} down -v
-
