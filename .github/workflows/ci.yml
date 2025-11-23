@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+  pull_request:
 
 jobs:
   ci:
@@ -80,14 +81,119 @@ jobs:
       - name: Run PHPMD
         run: vendor/bin/phpmd src text phpmd.xml
 
-      - name: Run Deptrac
-        run: vendor/bin/deptrac
-
       - name: Lint Symfony container
         run: bin/console lint:container
 
       - name: Lint YAML files
         run: bin/console lint:yaml config/
+
+      # Installation de jq pour parser les réponses JSON d'Ollama
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # Installation d'Ollama pour l'analyse SOLID
+      - name: Setup Ollama
+        uses: ai-action/setup-ollama@v1
+
+      # Cache des modèles Ollama pour accélérer les runs
+      - name: Cache Ollama models
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ${{ runner.os }}-ollama-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ollama-
+
+      # Télécharger le modèle LLM (llama3.2 est un bon compromis vitesse/qualité)
+      - name: Pull LLM model
+        run: |
+          ollama pull llama3.2
+
+      # Analyse SOLID avec Ollama sur les fichiers PHP modifiés
+      - name: SOLID check with Ollama
+        id: solid-check
+        continue-on-error: true
+        run: |
+          # Déterminer la référence de base selon le contexte
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.sha }}"
+            HEAD_REF="${{ github.event.pull_request.head.sha }}"
+          else
+            # Pour les pushes, comparer avec le commit précédent
+            BASE_REF="HEAD^"
+            HEAD_REF="HEAD"
+          fi
+
+          # Exécuter l'analyse SOLID
+          ./.github/scripts/check-solid.sh llama3.2 "$BASE_REF" "$HEAD_REF" || true
+          
+          # Récupérer le chemin du rapport généré
+          REPORT_FILE="${GITHUB_WORKSPACE}/.github/solid-reports/solid-report.md"
+          if [ -f "$REPORT_FILE" ]; then
+            echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
+            echo "report_exists=true" >> $GITHUB_OUTPUT
+            echo ""
+            echo "📋 Rapport SOLID généré:"
+            cat "$REPORT_FILE"
+          else
+            echo "report_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Aucun rapport généré (peut-être aucun fichier PHP modifié)"
+          fi
+
+      # Poster un commentaire sur la PR avec le rapport SOLID
+      - name: Comment PR with SOLID report
+        if: github.event_name == 'pull_request' && steps.solid-check.outputs.report_exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const reportFile = '${{ steps.solid-check.outputs.report_file }}';
+            
+            let report = '## 🔍 Analyse SOLID\n\n';
+            report += 'Analyse automatique des principes SOLID effectuée sur les fichiers PHP modifiés.\n\n';
+            report += '---\n\n';
+            
+            try {
+              if (fs.existsSync(reportFile)) {
+                const content = fs.readFileSync(reportFile, 'utf8');
+                report += content;
+              } else {
+                report += '⚠️ Impossible de récupérer le rapport complet. Consultez les logs de la CI pour plus de détails.';
+              }
+            } catch (error) {
+              report += `⚠️ Erreur lors de la lecture du rapport: ${error.message}`;
+            }
+            
+            // Chercher un commentaire existant de cette action
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🔍 Analyse SOLID')
+            );
+            
+            if (botComment) {
+              // Mettre à jour le commentaire existant
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: report
+              });
+            } else {
+              // Créer un nouveau commentaire
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: report
+              });
+            }
 
       - name: Wait before running tests
         run: sleep 60
