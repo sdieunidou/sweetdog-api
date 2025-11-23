@@ -375,7 +375,7 @@ foreach ($files as $file) {
             $message .= ' — ' . $suggest;
         }
         if (!empty($steps)) {
-            $message .= ' — Ex: ' . $steps[0];
+            $message .= ' — Étapes: ' . implode(' | ', $steps);
         }
 
         emitAnnotation($severity, $file, $line, $title, $message);
