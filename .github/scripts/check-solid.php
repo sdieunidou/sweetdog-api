@@ -38,32 +38,37 @@ function runCommand(string $cmd, bool $allowFailure = false): string
  */
 function callOllama(string $model, string $prompt): string
 {
-    $descriptors = [
-        0 => ['pipe', 'r'],  // stdin
-        1 => ['pipe', 'w'],  // stdout
-        2 => ['pipe', 'w'],  // stderr
-    ];
-
-    $process = proc_open("ollama run " . escapeshellarg($model), $descriptors, $pipes);
-
-    if (!is_resource($process)) {
-        throw new RuntimeException('Impossible de lancer ollama');
+    // On écrit le prompt dans un fichier temporaire
+    $tmp = tempnam(sys_get_temp_dir(), 'ollama_prompt_');
+    if ($tmp === false) {
+        throw new RuntimeException('Impossible de créer un fichier temporaire pour le prompt');
     }
 
-    fwrite($pipes[0], $prompt);
-    fclose($pipes[0]);
+    file_put_contents($tmp, $prompt);
 
-    $stdout = stream_get_contents($pipes[1]);
-    fclose($pipes[1]);
+    // On fait exactement ce que tu faisais en bash :
+    //   cat prompt | ollama run model 2>&1
+    $cmd = sprintf(
+        'cat %s | ollama run %s 2>&1',
+        escapeshellarg($tmp),
+        escapeshellarg($model)
+    );
 
-    $stderr = stream_get_contents($pipes[2]);
-    fclose($pipes[2]);
+    $output = [];
+    $code   = 0;
+    exec($cmd, $output, $code);
 
-    $code = proc_close($process);
+    unlink($tmp);
 
-    // On retourne stdout + stderr pour ne rien perdre (on nettoiera après)
-    return $stdout . "\n" . $stderr;
+    if ($code !== 0) {
+        // On ne throw pas forcément, on laisse le JSON extractor décider
+        // mais on logge un minimum
+        return implode("\n", $output);
+    }
+
+    return implode("\n", $output);
 }
+
 
 /**
  * Supprime les séquences ANSI (couleurs, spinner, etc.).
