@@ -21,9 +21,8 @@
         <exclude name="ExcessiveParameterList"/>
     </rule>
     
-    <!-- Design Rules - Excluded as ExcessiveParameterList is too strict for DTOs -->
-    <!-- <rule ref="rulesets/design.xml"/> -->
-    
+    <rule ref="rulesets/design.xml"/>
+
     <!-- Naming Rules -->
     <rule ref="rulesets/naming.xml">
         <exclude name="ShortVariable"/>
