@@ -2,6 +2,11 @@ SHELL := /bin/bash
 
 filter ?=
 
+install:
+	composer install
+	docker-compose build
+.PHONY: install
+
 tests:
 	symfony console cache:clear --env=test || true
 	symfony console doctrine:database:drop --force --env=test || true
