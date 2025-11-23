@@ -4,8 +4,16 @@ filter ?=
 
 install:
 	composer install
+	symfony server:ca:install
 	docker-compose build
 .PHONY: install
+
+start:
+	docker-compose up -d
+	symfony console doctrine:migrations:migrate -n
+	symfony console doctrine:fixtures:load -n
+	symfony local:server:start
+.PHONY: start
 
 tests:
 	symfony console cache:clear --env=test || true
