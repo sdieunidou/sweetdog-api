@@ -103,45 +103,32 @@ $(cat "$FILE")"
   echo "🤖 Interrogation de l'IA..."
   RAW_RESPONSE=$(printf "%s\n" "$FULL_PROMPT" | ollama run "$MODEL_NAME" 2>&1 || echo '{"error": "Erreur lors de l appel à Ollama"}')
 
-  # Nettoyer les séquences ANSI (couleurs, spinner, etc.) pour ne garder que le texte
+  # 1) Nettoyer les séquences ANSI (couleurs, spinner, etc.)
   CLEAN_RESPONSE=$(printf "%s\n" "$RAW_RESPONSE" | sed -r 's/\x1B\[[0-9;?]*[ -/]*[@-~]//g')
 
-  # Extraire le JSON de la réponse
-  FIRST_BRACE=$(echo "$CLEAN_RESPONSE" | grep -n '{' | head -1 | cut -d: -f1 || echo "")
-  LAST_BRACE=$(echo "$CLEAN_RESPONSE" | grep -n '}' | tail -1 | cut -d: -f1 || echo "")
-
-  if [ -n "$FIRST_BRACE" ] && [ -n "$LAST_BRACE" ] && [ "$FIRST_BRACE" -le "$LAST_BRACE" ]; then
-    JSON_RESPONSE=$(echo "$CLEAN_RESPONSE" | sed -n "${FIRST_BRACE},${LAST_BRACE}p")
-  else
-    JSON_RESPONSE=""
-  fi
-
-  # Si l'extraction échoue ou JSON invalide, 2e tentative
-  if [ -z "$JSON_RESPONSE" ] || ! echo "$JSON_RESPONSE" | jq . >/dev/null 2>&1; then
-    JSON_LINES=$(echo "$CLEAN_RESPONSE" | awk '/{/,/}/' || echo "")
-    if [ -n "$JSON_LINES" ]; then
-      JSON_RESPONSE=$(echo "$JSON_LINES" | jq -s '.[0]' 2>/dev/null || echo "$JSON_LINES")
-    fi
-  fi
+  # 2) Garder uniquement ce qui commence à la première ligne contenant '{'
+  JSON_RESPONSE=$(printf "%s\n" "$CLEAN_RESPONSE" | awk 'p{print} /{/{p=1}')
 
   if [ -z "$JSON_RESPONSE" ]; then
-    echo "⚠️  Réponse invalide ou non-JSON pour $FILE"
+    echo "⚠️  Réponse sans bloc JSON pour $FILE"
     echo "Réponse brute (extrait) :"
-    echo "$CLEAN_RESPONSE" | head -20
+    echo "$CLEAN_RESPONSE" | head -40
     echo ""
     continue
   fi
 
+  # 3) Vérifier que c'est bien du JSON
   if ! echo "$JSON_RESPONSE" | jq . >/dev/null 2>&1; then
     echo "⚠️  JSON invalide pour $FILE, ignoré."
-    echo "Réponse brute (extrait) :"
-    echo "$CLEAN_RESPONSE" | head -20
+    echo "JSON candidat (extrait) :"
+    echo "$JSON_RESPONSE" | head -40
     echo ""
     continue
   fi
 
   echo "📊 Résultat de l'analyse:"
   echo "$JSON_RESPONSE" | jq .
+
 
   SOLID_OK=$(echo "$JSON_RESPONSE" | jq -r '.solid_ok // false')
   SCORE=$(echo "$JSON_RESPONSE" | jq -r '.score // 0')
