@@ -10,10 +10,13 @@ install:
 
 start:
 	docker-compose up -d
-	symfony console doctrine:migrations:migrate -n
-	symfony console doctrine:fixtures:load -n
 	symfony local:server:start
 .PHONY: start
+
+load-data:
+	symfony console doctrine:migrations:migrate -n
+	symfony console doctrine:fixtures:load -n
+.PHONY: load-data
 
 tests:
 	symfony console cache:clear --env=test || true
