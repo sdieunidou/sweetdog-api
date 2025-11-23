@@ -12,8 +12,7 @@ final readonly class LoginUseCase
     public function __construct(
         private readonly AuthenticationServiceInterface $authenticationService,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     public function __invoke(LoginCommand $command): LoginResponse
     {

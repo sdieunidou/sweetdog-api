@@ -12,6 +12,7 @@ class ContactApiClient extends ApiClient
     {
         return $this
             ->withAuthentication()
-            ->post('/api/contacts', $data);
+            ->post('/api/contacts', $data)
+        ;
     }
 }

@@ -23,8 +23,7 @@ final class CreateContactController extends AbstractController
         private readonly CreateContactUseCase $createContactUseCase,
         private readonly SerializerInterface $serializer,
         private readonly ObjectMapperInterface $objectMapper,
-    ) {
-    }
+    ) {}
 
     public function __invoke(#[MapRequestPayload] CreateContactRequest $createContactRequest): JsonResponse
     {

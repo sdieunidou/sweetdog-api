@@ -22,8 +22,7 @@ final class FusionAuthAuthenticator extends AbstractAuthenticator
     public function __construct(
         private readonly FusionAuthAuthenticationAdapter $fusionAuthAuthenticationAdapter,
         private readonly UserRepositoryInterface $userRepository,
-    ) {
-    }
+    ) {}
 
     /**
      * @phpstan-ignore-next-line

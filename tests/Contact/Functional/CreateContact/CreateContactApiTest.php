@@ -10,14 +10,14 @@ use Tests\Contact\Functional\ContactApiClient;
 use Tests\Contact\Functional\ContactRequestBuilder;
 use Tests\Shared\Functional\CommonAssertions;
 
+/**
+ * @internal
+ *
+ * @coversNothing
+ */
 class CreateContactApiTest extends WebTestCase
 {
     use CommonAssertions;
-
-    private function createApiClient(): ContactApiClient
-    {
-        return new ContactApiClient(static::createClient(), $this);
-    }
 
     public function testCreateContactSuccess(): void
     {
@@ -33,7 +33,8 @@ class CreateContactApiTest extends WebTestCase
                 'subject' => 'Valid Subject',
                 'message' => 'Valid message with enough characters',
             ], $responseData)
-            ->assertIdIsInteger($responseData);
+            ->assertIdIsInteger($responseData)
+        ;
     }
 
     public function testCreateContactWithEmptyFields(): void
@@ -49,7 +50,8 @@ class CreateContactApiTest extends WebTestCase
             ->assertViolations([
                 'Le sujet ne peut pas être vide',
                 'Le message ne peut pas être vide',
-            ], $responseData);
+            ], $responseData)
+        ;
     }
 
     #[DataProviderExternal(CreateContactValidationDataProvider::class, 'invalidSubjects')]
@@ -63,7 +65,8 @@ class CreateContactApiTest extends WebTestCase
 
         $this
             ->assertHttpValidationError()
-            ->assertViolations([$expectedError], $responseData);
+            ->assertViolations([$expectedError], $responseData)
+        ;
     }
 
     #[DataProviderExternal(CreateContactValidationDataProvider::class, 'invalidMessages')]
@@ -77,7 +80,8 @@ class CreateContactApiTest extends WebTestCase
 
         $this
             ->assertHttpValidationError()
-            ->assertViolations([$expectedError], $responseData);
+            ->assertViolations([$expectedError], $responseData)
+        ;
     }
 
     #[DataProviderExternal(CreateContactValidationDataProvider::class, 'multipleValidationErrors')]
@@ -91,7 +95,8 @@ class CreateContactApiTest extends WebTestCase
 
         $this
             ->assertHttpValidationError()
-            ->assertViolations($expectedErrors, $responseData);
+            ->assertViolations($expectedErrors, $responseData)
+        ;
     }
 
     public function testCreateContactErrorResponseStructure(): void
@@ -104,7 +109,8 @@ class CreateContactApiTest extends WebTestCase
 
         $this
             ->assertHttpValidationError()
-            ->assertViolations([], $responseData);
+            ->assertViolations([], $responseData)
+        ;
     }
 
     #[DataProviderExternal(CreateContactValidationDataProvider::class, 'boundaryValues')]
@@ -122,7 +128,8 @@ class CreateContactApiTest extends WebTestCase
                 'subject' => $subject,
                 'message' => $message,
             ], $responseData)
-            ->assertIdIsInteger($responseData);
+            ->assertIdIsInteger($responseData)
+        ;
     }
 
     public function testCreateContactWithValidSpecialCharacters(): void
@@ -139,6 +146,12 @@ class CreateContactApiTest extends WebTestCase
                 'subject' => 'Test Subject with valid chars 123, 456! 789?',
                 'message' => 'Test Message with valid special characters: 123, 456! 789? ; "quotes" and (parentheses)',
             ], $responseData)
-            ->assertIdIsInteger($responseData);
+            ->assertIdIsInteger($responseData)
+        ;
+    }
+
+    private function createApiClient(): ContactApiClient
+    {
+        return new ContactApiClient(static::createClient(), $this);
     }
 }

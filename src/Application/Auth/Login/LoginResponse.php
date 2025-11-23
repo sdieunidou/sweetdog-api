@@ -10,8 +10,7 @@ final readonly class LoginResponse
         public string $token,
         public string $refreshToken,
         public int $tokenExpirationInstant,
-    ) {
-    }
+    ) {}
 
     public static function create(string $token, string $refreshToken, int $tokenExpirationInstant): self
     {

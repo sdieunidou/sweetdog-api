@@ -10,8 +10,7 @@ readonly class Contact
         public string $subject,
         public string $message,
         public ?int $id,
-    ) {
-    }
+    ) {}
 
     public static function create(string $subject, string $message, ?int $id = null): self
     {

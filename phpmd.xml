@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<ruleset name="Project MD"
+         xmlns="http://pmd.sf.net/ruleset/1.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0
+                     http://pmd.sf.net/ruleset_xml_schema.xsd"
+         xsi:noNamespaceSchemaLocation="
+                     http://pmd.sf.net/ruleset_xml_schema.xsd">
+    <description>SRP/ISP via GodClass, TooManyMethods, etc.</description>
+    
+    <!-- Clean Code Rules -->
+    <rule ref="rulesets/cleancode.xml">
+        <exclude name="BooleanArgumentFlag"/>
+        <exclude name="StaticAccess"/>
+        <exclude name="MissingImport"/>
+        <exclude name="ExcessiveParameterList"/>
+    </rule>
+    
+    <!-- Code Size Rules -->
+    <rule ref="rulesets/codesize.xml">
+        <exclude name="ExcessiveParameterList"/>
+    </rule>
+    
+    <!-- Design Rules - Excluded as ExcessiveParameterList is too strict for DTOs -->
+    <!-- <rule ref="rulesets/design.xml"/> -->
+    
+    <!-- Naming Rules -->
+    <rule ref="rulesets/naming.xml">
+        <exclude name="ShortVariable"/>
+        <exclude name="LongVariable"/>
+    </rule>
+    
+    <!-- Unused Code Rules -->
+    <rule ref="rulesets/unusedcode.xml">
+        <exclude name="UnusedFormalParameter"/>
+        <exclude name="UnusedPrivateField"/>
+    </rule>
+</ruleset>

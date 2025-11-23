@@ -49,9 +49,7 @@ final class User implements UserInterface
         return array_values(array_unique($roles));
     }
 
-    public function eraseCredentials(): void
-    {
-    }
+    public function eraseCredentials(): void {}
 
     public function getUserIdentifier(): string
     {

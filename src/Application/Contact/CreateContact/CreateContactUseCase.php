@@ -11,8 +11,7 @@ final readonly class CreateContactUseCase
 {
     public function __construct(
         private readonly ContactRepositoryInterface $contactRepository,
-    ) {
-    }
+    ) {}
 
     public function __invoke(CreateContactCommand $command): CreateContactResponse
     {

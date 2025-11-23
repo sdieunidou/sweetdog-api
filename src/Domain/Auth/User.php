@@ -9,8 +9,7 @@ readonly class User
     public function __construct(
         public array $roles = [],
         public ?string $id = null,
-    ) {
-    }
+    ) {}
 
     public static function create(array $roles = [], ?string $id = null): self
     {

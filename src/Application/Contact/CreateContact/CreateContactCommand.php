@@ -9,8 +9,7 @@ final readonly class CreateContactCommand
     public function __construct(
         public string $subject,
         public string $message,
-    ) {
-    }
+    ) {}
 
     public static function create(string $subject, string $message): self
     {

@@ -11,7 +11,8 @@ class LoginRequestBuilder
     public function withValidData(): self
     {
         return $this->withEmail('admin@admin.com')
-                    ->withPassword('password');
+            ->withPassword('password')
+        ;
     }
 
     public function withEmail(string $email): self

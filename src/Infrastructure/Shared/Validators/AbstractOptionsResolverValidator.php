@@ -8,8 +8,6 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 abstract class AbstractOptionsResolverValidator
 {
-    abstract protected function configureResolver(OptionsResolver $resolver): void;
-
     public function validate(array $data, bool $ignoreUndefined = true): array
     {
         $resolver = new OptionsResolver();
@@ -23,4 +21,6 @@ abstract class AbstractOptionsResolverValidator
             throw new \InvalidArgumentException(sprintf('Validation failed: %s', $e->getMessage()), 0, $e);
         }
     }
+
+    abstract protected function configureResolver(OptionsResolver $resolver): void;
 }

@@ -19,6 +19,5 @@ final readonly class JwtClaims
         public string $sid,
         public string $tid,
         public string $tty,
-    ) {
-    }
+    ) {}
 }

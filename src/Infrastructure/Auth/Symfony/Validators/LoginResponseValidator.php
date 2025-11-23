@@ -11,7 +11,15 @@ final class LoginResponseValidator extends AbstractOptionsResolverValidator
 {
     public function __construct(
         private readonly UserResponseValidator $userResponseValidator,
-    ) {
+    ) {}
+
+    public function validate(array $data, bool $ignoreUndefined = true): array
+    {
+        $validatedData = parent::validate($data, $ignoreUndefined);
+
+        $this->userResponseValidator->validate($data, $ignoreUndefined);
+
+        return $validatedData;
     }
 
     protected function configureResolver(OptionsResolver $resolver): void
@@ -21,14 +29,5 @@ final class LoginResponseValidator extends AbstractOptionsResolverValidator
             'refreshToken',
             'tokenExpirationInstant',
         ]);
-    }
-
-    public function validate(array $data, bool $ignoreUndefined = true): array
-    {
-        $validatedData = parent::validate($data, $ignoreUndefined);
-
-        $this->userResponseValidator->validate($data, $ignoreUndefined);
-
-        return $validatedData;
     }
 }

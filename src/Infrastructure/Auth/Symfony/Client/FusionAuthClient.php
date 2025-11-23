@@ -15,8 +15,7 @@ final class FusionAuthClient
         private readonly string $fusionAuthUrl,
         #[Autowire('%env(FUSIONAUTH_API_KEY)%')]
         private readonly string $fusionAuthApiKey,
-    ) {
-    }
+    ) {}
 
     public function validateJwtToken(string $token): array
     {
