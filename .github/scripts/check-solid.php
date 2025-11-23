@@ -47,9 +47,8 @@ function callOllama(string $model, string $prompt): string
     file_put_contents($tmpFile, $prompt);
 
     // Timeout de 60s par fichier (à ajuster si besoin)
-    // timeout 60s cat
     $cmd = sprintf(
-        'cat %s | ollama run %s 2>&1',
+        'timeout 60s cat %s | ollama run %s 2>&1',
         escapeshellarg($tmpFile),
         escapeshellarg($model)
     );
@@ -111,18 +110,50 @@ function extractJson(string $raw): ?array
 
 /**
  * Construit le prompt SOLID pour un fichier donné.
+ * On demande des recommandations de refacto concrètes : noms de classes, services,
+ * interfaces, signatures de méthodes, étapes de refactoring.
  */
 function buildPrompt(string $filePath, string $fileContent): string
 {
     $basePrompt = <<<'PROMPT'
-Tu es un expert PHP/Symfony et des principes SOLID.
+Tu es un expert PHP 8.4 / Symfony et des principes SOLID.
 
-Analyse le fichier suivant et détermine s'il respecte les principes SOLID, en particulier :
-- SRP (Single Responsibility Principle) : une classe doit avoir une seule raison de changer
-- OCP (Open/Closed Principle) : ouvert à l'extension, fermé à la modification
-- LSP (Liskov Substitution Principle) : les objets dérivés doivent être substituables à leurs classes de base
-- ISP (Interface Segregation Principle) : préférer plusieurs interfaces spécifiques à une interface générale
-- DIP (Dependency Inversion Principle) : dépendre d'abstractions, pas de concrétions
+Ton rôle :
+- analyser le fichier suivant
+- détecter les violations des principes SOLID
+- proposer des refactorings CONCRETS et ACTIONNABLES pour un développeur Symfony.
+
+Contexte :
+- Le code est dans un projet Symfony moderne (autowiring, services, contrôleurs fins).
+- Les contrôleurs doivent surtout orchestrer des services / use cases.
+- La logique métier, la validation, le cache, le logging, l'envoi d'emails doivent idéalement vivre dans des services dédiés.
+
+Pour chaque violation détectée :
+1. **Summary**
+   - Résume le problème en 1 phrase claire.
+
+2. **Suggestion**
+   - Donne une recommandation concrète de refactorisation en texte continu.
+   - NE TE CONTENTE PAS de phrases vagues ("simplifier le contrôleur", "extraire un service").
+   - Donne des exemples précis :
+     - noms de classes à créer (ex: `LoginRequestValidator`, `LoginService`, `UserLoginNotifier`)
+     - responsabilités EXACTES de ces classes
+     - quels morceaux de code déplacer (ex: "extraire la logique de validation de `__invoke()` vers `LoginRequestValidator::validate(Request $request): LoginData`")
+     - comment injecter ces classes dans le contrôleur (constructeur, autowiring).
+
+3. **refactor_steps**
+   - Fournis une liste d'étapes concrètes, sous forme de tableau de chaînes.
+   - Chaque étape doit être une instruction simple que le développeur peut appliquer.
+   - Exemple :
+     - "Créer la classe LoginRequestValidator avec une méthode validate(Request $request): LoginData"
+     - "Créer la classe LoginService avec une méthode handle(LoginData $data): User"
+     - "Injecter LoginRequestValidator et LoginService dans LoginController via le constructeur"
+     - "Dans __invoke(), remplacer la logique actuelle par des appels à ces services"
+
+Important :
+- Reste compatible avec Symfony (services, injection de dépendances).
+- Préfère la création de services / interfaces à l'ajout de simples commentaires ou TODO.
+- Quand tu proposes des noms de classes/services, utilise un style cohérent avec le domaine (par ex. `LoginHandler`, `UserNotifier`, etc.).
 
 IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans texte avant ou après. Commence directement par { et termine par }.
 
@@ -142,10 +173,15 @@ ou si problèmes détectés :
   "solid_ok": false,
   "problems": [
     {
-      "principle": "SRP",
-      "severity": "major",
-      "summary": "La classe a plusieurs responsabilités",
-      "suggestion": "Séparer en plusieurs classes",
+      "principle": "SRP | OCP | LSP | ISP | DIP",
+      "severity": "major | minor",
+      "summary": "Résumé court du problème",
+      "suggestion": "Recommandation concrète de refactoring avec noms de classes/services/méthodes et logique à déplacer",
+      "refactor_steps": [
+        "Étape 1 de refactor",
+        "Étape 2 de refactor",
+        "Étape 3 de refactor"
+      ],
       "line": 42
     }
   ],
@@ -174,7 +210,6 @@ function emitAnnotation(string $severity, string $file, ?int $line, string $titl
     $titleSafe   = str_replace(['%', "\r", "\n"], [' ', ' ', ' '], $title);
     $messageSafe = str_replace(['%', "\r", "\n"], [' ', ' ', ' '], $message);
 
-    // Construction de la commande d'annotation GitHub
     if ($line !== null && $line > 0) {
         printf(
             "::%s file=%s,line=%d,title=%s::%s\n",
@@ -311,6 +346,11 @@ foreach ($files as $file) {
         $summary   = $p['summary'] ?? '';
         $suggest   = $p['suggestion'] ?? '';
         $line      = isset($p['line']) ? (int)$p['line'] : null;
+        $steps     = $p['refactor_steps'] ?? null;
+
+        if (!is_array($steps)) {
+            $steps = [];
+        }
 
         $report .= "### {$principle} - {$severity}\n\n";
         if ($line !== null && $line > 0) {
@@ -319,9 +359,24 @@ foreach ($files as $file) {
         $report .= "**Problème**: {$summary}\n\n";
         $report .= "**Suggestion**: {$suggest}\n\n";
 
-        // Annotation GitHub pour ce problème
+        if (!empty($steps)) {
+            $report .= "**Étapes de refactorisation proposées** :\n\n";
+            foreach ($steps as $step) {
+                $report .= "- " . $step . "\n";
+            }
+            $report .= "\n";
+        }
+
+        // Annotation GitHub pour ce problème (major + minor)
         $title   = "SOLID {$principle} ({$severity})";
-        $message = $summary . ' — ' . $suggest;
+        $message = $summary;
+        if ($suggest !== '') {
+            $message .= ' — ' . $suggest;
+        }
+        if (!empty($steps)) {
+            $message .= ' — Ex: ' . $steps[0];
+        }
+
         emitAnnotation($severity, $file, $line, $title, $message);
     }
 
@@ -346,7 +401,7 @@ println("\n📋 Résumé de l'analyse:");
 println($report);
 println();
 
-// Chemin du rapport pour la CI (si tu veux le réutiliser ailleurs)
+// Chemin du rapport pour la CI
 file_put_contents($reportDir . '/report-path.txt', $reportFile);
 
 if ($failed) {
