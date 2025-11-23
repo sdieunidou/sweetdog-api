@@ -103,11 +103,17 @@ $(cat "$FILE")"
   echo "🤖 Interrogation de l'IA..."
   RAW_RESPONSE=$(printf "%s\n" "$FULL_PROMPT" | ollama run "$MODEL_NAME" 2>&1 || echo '{"error": "Erreur lors de l appel à Ollama"}')
 
-  # 1) Nettoyer les séquences ANSI (couleurs, spinner, etc.)
+  # 1) Nettoyer les séquences ANSI (spinner, couleurs, etc.)
   CLEAN_RESPONSE=$(printf "%s\n" "$RAW_RESPONSE" | sed -r 's/\x1B\[[0-9;?]*[ -/]*[@-~]//g')
 
-  # 2) Garder uniquement ce qui commence à la première ligne contenant '{'
-  JSON_RESPONSE=$(printf "%s\n" "$CLEAN_RESPONSE" | awk 'p{print} /{/{p=1}')
+  # 2) Essayer d'extraire un bloc JSON à partir de la première ligne contenant un guillemet et un ":"
+  # (typiquement la ligne "file": "...", etc.)
+  JSON_RESPONSE=$(printf "%s\n" "$CLEAN_RESPONSE" | awk 'found{print} /"[a-zA-Z0-9_]+":/{if(!found){found=1; print}}')
+
+  # Si on n'a rien, tenter à partir de la première accolade
+  if [ -z "$JSON_RESPONSE" ]; then
+    JSON_RESPONSE=$(printf "%s\n" "$CLEAN_RESPONSE" | awk 'found{print} /{/{if(!found){found=1; print}}')
+  fi
 
   if [ -z "$JSON_RESPONSE" ]; then
     echo "⚠️  Réponse sans bloc JSON pour $FILE"
@@ -117,7 +123,17 @@ $(cat "$FILE")"
     continue
   fi
 
-  # 3) Vérifier que c'est bien du JSON
+  # 3) Si ça ne commence pas par une accolade, on entoure avec { ... }
+  if ! echo "$JSON_RESPONSE" | grep -q '^{'; then
+    JSON_RESPONSE="{\n$JSON_RESPONSE\n}"
+  fi
+
+  # 4) Si ça ne finit pas par une accolade, on ajoute "}"
+  if ! echo "$JSON_RESPONSE" | grep -q '}$'; then
+    JSON_RESPONSE="$JSON_RESPONSE\n}"
+  fi
+
+  # 5) Vérifier que c'est bien du JSON
   if ! echo "$JSON_RESPONSE" | jq . >/dev/null 2>&1; then
     echo "⚠️  JSON invalide pour $FILE, ignoré."
     echo "JSON candidat (extrait) :"
@@ -128,6 +144,7 @@ $(cat "$FILE")"
 
   echo "📊 Résultat de l'analyse:"
   echo "$JSON_RESPONSE" | jq .
+
 
 
   SOLID_OK=$(echo "$JSON_RESPONSE" | jq -r '.solid_ok // false')
