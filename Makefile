@@ -28,7 +28,6 @@ tests:
 .PHONY: tests
 
 lint:
-	vendor/bin/php-cs-fixer fix src/
-	vendor/bin/php-cs-fixer fix tests/
+	vendor/bin/php-cs-fixer fix
 	vendor/bin/phpstan analyse src/
 .PHONY: lint
