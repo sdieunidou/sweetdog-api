@@ -72,8 +72,7 @@ jobs:
 
       - name: Check code style with PHP-CS-Fixer
         run: |
-          vendor/bin/php-cs-fixer fix --dry-run --diff src/
-          vendor/bin/php-cs-fixer fix --dry-run --diff tests/
+          vendor/bin/php-cs-fixer fix --dry-run --diff
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src/

@@ -29,5 +29,13 @@ tests:
 
 lint:
 	vendor/bin/php-cs-fixer fix
-	vendor/bin/phpstan analyse src/
 .PHONY: lint
+
+ci-check:
+	vendor/bin/php-cs-fixer fix --dry-run --diff
+	vendor/bin/phpstan analyse src/
+	vendor/bin/phpmd src text phpmd.xml
+	vendor/bin/deptrac
+	bin/console lint:container
+	bin/console lint:yaml config/
+.PHONY: ci-check
