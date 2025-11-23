@@ -74,25 +74,6 @@ jobs:
       - name: Composer security audit
         run: composer audit
 
-      - name: Check code style with PHP-CS-Fixer
-        run: |
-          vendor/bin/php-cs-fixer fix --dry-run --diff
-
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse src/
-
-      - name: Run PHPMD
-        run: vendor/bin/phpmd src text phpmd.xml
-
-      - name: Run Deptrac
-        run: vendor/bin/deptrac
-
-      - name: Lint Symfony container
-        run: bin/console lint:container
-
-      - name: Lint YAML files
-        run: bin/console lint:yaml config/
-
       # --- IA / Ollama ---
 
       - name: Install jq

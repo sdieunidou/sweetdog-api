@@ -34,6 +34,7 @@ final class LoginController extends AbstractController
 
         // lol
         //lol2
+        // lol 3
     }
 
     public function __invoke(#[MapRequestPayload] LoginRequest $loginRequest, Request $request): JsonResponse
