@@ -6,9 +6,6 @@ on:
       - main
       - develop
   pull_request:
-    branches:
-      - main
-      - develop
 
 jobs:
   ci:
@@ -16,6 +13,7 @@ jobs:
     permissions:
       contents: write        # pour commenter un commit
       pull-requests: write   # pour commenter une PR
+      checks: write          # pour créer un CheckRun
 
     steps:
       - name: Checkout code
@@ -150,12 +148,41 @@ jobs:
 
           exit 0
 
-      - name: Ajouter le rapport SOLID au check
+      - name: Ajouter le rapport SOLID au check (step summary)
         if: steps.solid-check.outputs.report_exists == 'true'
         run: |
           echo "## 🔍 Analyse SOLID (IA)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           cat "${{ steps.solid-check.outputs.report_file }}" >> $GITHUB_STEP_SUMMARY
+
+      # --- CheckRun dédié SOLID / IA ---
+      - name: Créer CheckRun SOLID / IA
+        if: steps.solid-check.outputs.report_exists == 'true'
+        uses: actions/github-script@v7
+        env:
+          SOLID_EXIT_CODE: ${{ steps.solid-check.outputs.solid_exit_code }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+
+            const report = fs.readFileSync('${{ steps.solid-check.outputs.report_file }}', 'utf8');
+            const exitCode = process.env.SOLID_EXIT_CODE || '0';
+            const conclusion = exitCode === '0' ? 'success' : 'failure';
+
+            await github.rest.checks.create({
+              owner,
+              repo,
+              name: 'SOLID / IA',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion,
+              output: {
+                title: 'Analyse SOLID (IA)',
+                summary: report,
+              },
+            });
 
       # --- Nettoyage des anciens commentaires PR ---
       - name: Delete previous SOLID comment (PR)

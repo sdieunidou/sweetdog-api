@@ -34,9 +34,6 @@ final class LoginController extends AbstractController
 
         // lol
         // lol 2
-        // lol 4
-        // lol 5
-        // looz
         // lozlzn
     }
 

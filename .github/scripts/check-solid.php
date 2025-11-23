@@ -47,7 +47,7 @@ function callOllama(string $model, string $prompt): string
     file_put_contents($tmpFile, $prompt);
 
     // Timeout de 60s par fichier (à ajuster si besoin)
-    // timeout 60s cat
+    // timeout 60s 
     $cmd = sprintf(
         'cat %s | ollama run %s 2>&1',
         escapeshellarg($tmpFile),
