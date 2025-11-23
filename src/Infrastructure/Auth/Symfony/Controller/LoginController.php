@@ -33,6 +33,7 @@ final class LoginController extends AbstractController
         $this->cache = new FilesystemAdapter();
 
         // lol
+        //lol2
     }
 
     public function __invoke(#[MapRequestPayload] LoginRequest $loginRequest, Request $request): JsonResponse
