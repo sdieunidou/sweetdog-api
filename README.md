@@ -5,7 +5,7 @@ API REST développée avec Symfony 7.3, suivant une architecture hexagonale (Cle
 ## 🚀 Technologies
 
 - **Framework**: Symfony 7.3
-- **PHP**: 8.2+
+- **PHP**: 8.4+
 - **Base de données**: PostgreSQL 16
 - **Authentification**: FusionAuth
 - **Architecture**: Hexagonale (Domain, Application, Infrastructure)
