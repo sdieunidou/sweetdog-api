@@ -32,6 +32,7 @@ final class LoginController extends AbstractController
         // Initialisation du cache directement dans le contrôleur
         $this->cache = new FilesystemAdapter();
         // test
+        // test 4
     }
 
     public function __invoke(#[MapRequestPayload] LoginRequest $loginRequest, Request $request): JsonResponse
