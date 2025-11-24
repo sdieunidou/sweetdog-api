@@ -1,7 +1,7 @@
 runners:
   llama3.2:
     type: ollama
-    binary: ollama
+    binary: /usr/local/bin/ollama
     model: llama3.2
     timeout: 300
 
