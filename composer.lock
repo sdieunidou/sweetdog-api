@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e7b6d8c92ceb9d267f3b32c1c88b3ae3",
+    "content-hash": "6025aed3947830fbd43cbf657d4e06e9",
     "packages": [
         {
             "name": "composer/semver",
@@ -10300,6 +10300,58 @@
                 }
             ],
             "time": "2024-06-11T12:45:25+00:00"
+        },
+        {
+            "name": "sdieunidou/inspecta-ai",
+            "version": "v0.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sdieunidou/inspecta-ai.git",
+                "reference": "6cc448b34a68a1bb7f5ee9934843cc1fa9d8f63a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sdieunidou/inspecta-ai/zipball/6cc448b34a68a1bb7f5ee9934843cc1fa9d8f63a",
+                "reference": "6cc448b34a68a1bb7f5ee9934843cc1fa9d8f63a",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.4",
+                "symfony/console": "^7.3",
+                "symfony/options-resolver": "^7.3",
+                "symfony/process": "^7.3",
+                "symfony/yaml": "^7.3"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.8",
+                "friendsofphp/php-cs-fixer": "^3.90",
+                "symfony/var-dumper": "^7.3"
+            },
+            "bin": [
+                "inspecta-ai"
+            ],
+            "type": "application",
+            "autoload": {
+                "psr-4": {
+                    "InspectaAi\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sébastien Dieunidou",
+                    "email": "s.dieunidou@gmail.com"
+                }
+            ],
+            "description": "Inspecta AI is a PHP CLI tool that applies configurable AI analyses to selected files",
+            "support": {
+                "issues": "https://github.com/sdieunidou/inspecta-ai/issues",
+                "source": "https://github.com/sdieunidou/inspecta-ai/tree/v0.0.2"
+            },
+            "time": "2025-11-24T17:56:39+00:00"
         },
         {
             "name": "sebastian/cli-parser",
