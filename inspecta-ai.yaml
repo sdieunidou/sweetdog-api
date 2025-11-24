@@ -1,0 +1,11 @@
+runners:
+  llama3.2:
+    type: ollama
+    binary: ollama
+    model: llama3.2
+    timeout: 300
+
+prompts:
+  solid_violations:
+    template: .github/prompt/solid.prompt
+    runner: llama3.2

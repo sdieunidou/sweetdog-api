@@ -29,3 +29,6 @@ phpstan.neon
 ###< phpstan/phpstan ###
 
 .vscode/
+
+# Rapports SOLID générés par la CI
+/.github/solid-reports/

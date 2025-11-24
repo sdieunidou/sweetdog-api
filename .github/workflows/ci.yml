@@ -2,14 +2,23 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
+      - develop
+  pull_request:
 
 jobs:
-  ci:
+  # =========================
+  # 1) Lint / qualité rapide
+  # =========================
+  lint:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -18,18 +27,63 @@ jobs:
           extensions: pdo, pdo_pgsql, intl, mbstring, zip, xml, dom
           coverage: none
 
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Install Symfony CLI
-        run: |
-          curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | sudo -E bash
-          sudo apt install symfony-cli
+      - name: Validate composer files
+        run: composer validate --no-check-all --no-check-publish
+
+      - name: Composer security audit
+        run: composer audit
+
+      - name: Lint Symfony container
+        run: bin/console lint:container
+
+      - name: Lint YAML files
+        run: bin/console lint:yaml config/
+
+  # =========================
+  # 2) Tests unitaires / fonctionnels
+  # =========================
+  tests:
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_pgsql, intl, mbstring, zip, xml, dom
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Set up Docker Compose
         id: docker-compose
         run: |
-          # Vérifier si docker-compose est disponible, sinon utiliser docker compose
           if command -v docker-compose &> /dev/null; then
             echo "cmd=docker-compose" >> $GITHUB_OUTPUT
           else
@@ -54,7 +108,7 @@ jobs:
           max_attempts=60
           attempt=0
           while [ $attempt -lt $max_attempts ]; do
-            if curl -f -s http://localhost:9011/api/status > /dev/null 2>&1; then
+            if curl -f -s http://localhost:9011/api/status >/dev/null 2>&1; then
               echo "FusionAuth is ready!"
               break
             fi
@@ -67,27 +121,22 @@ jobs:
             exit 1
           fi
 
-      - name: Composer security audit
-        run: composer audit
+      - name: Install Symfony CLI
+        run: |
+          curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | sudo -E bash
+          sudo apt install symfony-cli
 
       - name: Check code style with PHP-CS-Fixer
-        run: |
-          vendor/bin/php-cs-fixer fix --dry-run --diff
-
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+  
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src/
-
+  
       - name: Run PHPMD
         run: vendor/bin/phpmd src text phpmd.xml
-
+  
       - name: Run Deptrac
         run: vendor/bin/deptrac
-
-      - name: Lint Symfony container
-        run: bin/console lint:container
-
-      - name: Lint YAML files
-        run: bin/console lint:yaml config/
 
       - name: Wait before running tests
         run: sleep 60
@@ -99,3 +148,95 @@ jobs:
         if: always()
         run: ${{ steps.docker-compose.outputs.cmd }} down -v
 
+  # =========================
+  # 3) Analyse SOLID / IA (non bloquant)
+  # =========================
+  solid-ai:
+    runs-on: ubuntu-latest
+    needs: lint
+    continue-on-error: true   # 👈 rend le job non bloquant pour la CI globale
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+
+    # permissions par défaut (read) suffisent maintenant, on ne commente plus
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_pgsql, intl, mbstring, zip, xml, dom
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      # --- IA / OLLAMA (requis pour inspecta-ai) ---
+      - name: Setup Ollama
+        uses: ai-action/setup-ollama@v1
+
+      - name: Cache Ollama models
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ${{ runner.os }}-ollama-cache-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ollama-cache-
+
+      - name: Pull LLM model
+        run: ollama pull llama3.2
+
+      - name: SOLID check with inspecta-ai
+        id: solid-check
+        run: |
+          set -o pipefail
+
+          # Déterminer les commits à comparer
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.sha }}"
+            HEAD_REF="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_REF="${{ github.event.before }}"
+            HEAD_REF="${{ github.sha }}"
+          fi
+
+          echo "Base ref: $BASE_REF"
+          echo "Head ref: $HEAD_REF"
+
+          SOLID_EXIT_CODE=0
+          php .github/scripts/check-solid.php "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
+
+          echo "solid_exit_code=$SOLID_EXIT_CODE" >> $GITHUB_OUTPUT
+
+          REPORT_FILE="${GITHUB_WORKSPACE}/.github/solid-reports/solid-report.md"
+          if [ -f "$REPORT_FILE" ]; then
+            echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
+            echo "report_exists=true" >> $GITHUB_OUTPUT
+            echo "📋 Rapport SOLID généré:"
+            cat "$REPORT_FILE"
+          else
+            echo "report_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Aucun rapport généré (exit code: $SOLID_EXIT_CODE)"
+          fi
+
+          # On ne fait jamais échouer le job ici ; continue-on-error gère le reste
+          exit 0
+
+      - name: Ajouter le rapport SOLID au summary
+        if: steps.solid-check.outputs.report_exists == 'true'
+        run: |
+          echo "## 🔍 Analyse SOLID (IA)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat "${{ steps.solid-check.outputs.report_file }}" >> $GITHUB_STEP_SUMMARY
