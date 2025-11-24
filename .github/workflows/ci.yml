@@ -100,7 +100,7 @@ jobs:
       - name: Lint YAML files
         run: bin/console lint:yaml config/
 
-      # --- IA / OLLAMA ---
+      # --- IA / OLLAMA (requis pour inspecta-ai) ---
 
       - name: Setup Ollama
         uses: ai-action/setup-ollama@v1
@@ -116,7 +116,7 @@ jobs:
       - name: Pull LLM model
         run: ollama pull llama3.2
 
-      - name: SOLID check with Ollama
+      - name: SOLID check with inspecta-ai
         id: solid-check
         run: |
           set -o pipefail
@@ -134,7 +134,7 @@ jobs:
           echo "Head ref: $HEAD_REF"
 
           SOLID_EXIT_CODE=0
-          php .github/scripts/check-solid.php llama3.2 "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
+          php .github/scripts/check-solid.php "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
 
           echo "solid_exit_code=$SOLID_EXIT_CODE" >> $GITHUB_OUTPUT
 

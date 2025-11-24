@@ -7,5 +7,5 @@ runners:
 
 prompts:
   solid_violations:
-    template: tests/data/prompt/solid.prompt
+    template: .github/prompt/solid.prompt
     runner: llama3.2

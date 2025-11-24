@@ -2,13 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Script d'analyse SOLID avec Ollama (version PHP)
+ * Script d'analyse SOLID avec inspecta-ai (version PHP)
  *
  * Usage CLI :
- *   php .github/scripts/check-solid.php [MODEL_NAME] [BASE_REF] [HEAD_REF]
+ *   php .github/scripts/check-solid.php [BASE_REF] [HEAD_REF]
  *
  * Exemple :
- *   php .github/scripts/check-solid.php llama3.2 HEAD^ HEAD
+ *   php .github/scripts/check-solid.php HEAD^ HEAD
  */
 
 function println(string $message = ''): void
@@ -34,199 +34,45 @@ function runCommand(string $cmd, bool $allowFailure = false): string
 }
 
 /**
- * Appelle Ollama avec un prompt donné et renvoie la sortie brute (stdout+stderr).
- * On passe par "cat prompt | ollama run model 2>&1" pour éviter les deadlocks.
+ * Appelle inspecta-ai pour analyser un fichier et renvoie la sortie JSON.
  */
-function callOllama(string $model, string $prompt): string
+function callInspectaAi(string $filePath): string
 {
-    $tmpFile = tempnam(sys_get_temp_dir(), 'ollama_prompt_');
-    if ($tmpFile === false) {
-        throw new RuntimeException('Impossible de créer un fichier temporaire pour le prompt');
-    }
-
-    file_put_contents($tmpFile, $prompt);
-
-    // Timeout de 60s par fichier (à ajuster si besoin)
-    // timeout 60s 
     $cmd = sprintf(
-        'cat %s | ollama run %s 2>&1',
-        escapeshellarg($tmpFile),
-        escapeshellarg($model)
+        './vendor/bin/inspecta-ai analyze solid_violations %s 2>&1',
+        escapeshellarg($filePath)
     );
 
     $output = [];
     $code   = 0;
     exec($cmd, $output, $code);
 
-    unlink($tmpFile);
+    if ($code !== 0) {
+        throw new RuntimeException("Commande inspecta-ai échouée ($code): {$cmd}\n" . implode("\n", $output));
+    }
 
     return implode("\n", $output);
 }
 
 /**
- * Supprime les séquences ANSI (couleurs, spinner, etc.).
+ * Parse le JSON retourné par inspecta-ai.
+ * inspecta-ai retourne directement du JSON valide, donc on peut le parser directement.
  */
-function stripAnsi(string $text): string
+function parseInspectaAiJson(string $jsonOutput): ?array
 {
-    return preg_replace('/\x1B\[[0-9;?]*[ -\/]*[@-~]/', '', $text) ?? $text;
-}
-
-/**
- * Essaie d'extraire un JSON valide de la sortie d'Ollama.
- * Stratégie : on cherche le premier '{', puis on teste tous les suffixes terminant par '}'.
- * On garde le dernier JSON valide trouvé.
- */
-function extractJson(string $raw): ?array
-{
-    $clean = stripAnsi($raw);
-
-    $firstBracePos = strpos($clean, '{');
-    if ($firstBracePos === false) {
+    $decoded = json_decode($jsonOutput, true);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
         return null;
     }
-
-    $substr = substr($clean, $firstBracePos);
-    $length = strlen($substr);
-
-    $best = null;
-
-    for ($i = 0; $i < $length; $i++) {
-        if ($substr[$i] !== '}') {
-            continue;
-        }
-
-        $candidate = substr($substr, 0, $i + 1);
-
-        // Certains modèles renvoient \n littéraux, etc.
-        $candidate = stripcslashes($candidate);
-
-        $decoded = json_decode($candidate, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            $best = $decoded;
-        }
+    
+    if (!is_array($decoded)) {
+        return null;
     }
-
-    return $best;
+    
+    return $decoded;
 }
 
-/**
- * Construit le prompt SOLID pour un fichier donné.
- * On demande des recommandations de refacto concrètes : noms de classes, services,
- * interfaces, signatures de méthodes, étapes de refactoring.
- *
- * ⚠️ On force :
- *  - 1 problème précis par entrée dans "problems"
- *  - principle = UNE seule valeur parmi SRP, OCP, LSP, ISP, DIP
- */
-function buildPrompt(string $filePath, string $fileContent): string
-{
-    $basePrompt = <<<'PROMPT'
-Tu es un expert PHP 8.4 / Symfony et des principes SOLID.
-
-Ton rôle :
-- analyser le fichier suivant
-- détecter les violations des principes SOLID
-- proposer des refactorings CONCRETS et ACTIONNABLES pour un développeur Symfony.
-
-Contexte :
-- Le code est dans un projet Symfony moderne (autowiring, services, contrôleurs fins).
-- Les contrôleurs doivent surtout orchestrer des services / use cases.
-- La logique métier, la validation, le cache, le logging, l'envoi d'emails doivent idéalement vivre dans des services dédiés.
-
-IMPORTANT : GRANULARITÉ DES PROBLÈMES
-
-Pour le tableau "problems" :
-
-1. Chaque entrée de "problems" doit représenter **UN SEUL problème précis** :
-   - un endroit du code
-   - un seul principe violé (SRP OU OCP OU LSP OU ISP OU DIP)
-   - un résumé clairement ciblé (pas un diagnostic global de toute la classe).
-
-2. Le champ "principle" doit contenir **exactement UNE valeur**, parmi :
-   - "SRP"
-   - "OCP"
-   - "LSP"
-   - "ISP"
-   - "DIP"
-
-   Tu NE DOIS PAS écrire de texte composite comme "SRP | OCP | LSP | ISP | DIP" ou plusieurs principes dans le même champ.
-
-3. Si tu détectes plusieurs problèmes pour le même principe à des endroits différents :
-   - tu dois créer **plusieurs entrées** dans "problems"
-   - par exemple 3 violations SRP → 3 objets séparés dans "problems" (avec des lignes différentes).
-
-4. Ne regroupe jamais plusieurs problèmes dans un seul objet de "problems".
-   Il vaut mieux créer plusieurs entrées courtes et précises qu'une seule entrée générale.
-
-Pour chaque problème détecté :
-
-1. **Summary**
-   - Résume le problème en 1 phrase claire, ciblée sur un cas précis.
-
-2. **Suggestion**
-   - Donne une recommandation concrète de refactorisation en texte continu.
-   - NE TE CONTENTE PAS de phrases vagues ("simplifier le contrôleur", "extraire un service").
-   - Donne des exemples précis :
-     - noms de classes à créer (ex: `LoginRequestValidator`, `LoginService`, `UserLoginNotifier`)
-     - responsabilités EXACTES de ces classes
-     - quels morceaux de code déplacer (ex: "extraire la logique de validation de `__invoke()` vers `LoginRequestValidator::validate(Request $request): LoginData`")
-     - comment injecter ces classes dans le contrôleur (constructeur, autowiring).
-
-3. **refactor_steps**
-   - Fournis une liste d'étapes concrètes, sous forme de tableau de chaînes.
-   - Chaque étape doit être une instruction simple que le développeur peut appliquer.
-   - Exemple :
-     - "Créer la classe LoginRequestValidator avec une méthode validate(Request $request): LoginData"
-     - "Créer la classe LoginService avec une méthode handle(LoginData $data): User"
-     - "Injecter LoginRequestValidator et LoginService dans LoginController via le constructeur"
-     - "Dans __invoke(), remplacer la logique actuelle par des appels à ces services"
-
-Important :
-- Reste compatible avec Symfony (services, injection de dépendances).
-- Préfère la création de services / interfaces à l'ajout de simples commentaires ou TODO.
-- Quand tu proposes des noms de classes/services, utilise un style cohérent avec le domaine (par ex. `LoginHandler`, `UserNotifier`, etc.).
-
-IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans texte avant ou après. Commence directement par { et termine par }.
-
-Format JSON requis :
-
-{
-  "file": "chemin/du/fichier.php",
-  "solid_ok": true,
-  "problems": [],
-  "score": 85
-}
-
-ou si problèmes détectés :
-
-{
-  "file": "chemin/du/fichier.php",
-  "solid_ok": false,
-  "problems": [
-    {
-      "principle": "SRP",
-      "severity": "major",
-      "summary": "Résumé court d'un seul problème SRP précis",
-      "suggestion": "Recommandation concrète de refactoring avec noms de classes/services/méthodes et logique à déplacer",
-      "refactor_steps": [
-        "Étape 1 de refactor",
-        "Étape 2 de refactor",
-        "Étape 3 de refactor"
-      ],
-      "line": 42
-    }
-  ],
-  "score": 60
-}
-
-FICHIER: %s
-
-CODE:
-%s
-PROMPT;
-
-    return sprintf($basePrompt, $filePath, $fileContent);
-}
 
 /**
  * Échappe un texte pour les "workflow commands" GitHub (annotations).
@@ -277,11 +123,10 @@ function emitAnnotation(string $severity, string $file, ?int $line, string $titl
 // Main
 // -----------------------------------------------------------------------------
 
-$model   = $argv[1] ?? 'llama3.2';
-$baseRef = $argv[2] ?? 'HEAD^';
-$headRef = $argv[3] ?? 'HEAD';
+$baseRef = $argv[1] ?? 'HEAD^';
+$headRef = $argv[2] ?? 'HEAD';
 
-println("🔍 Analyse SOLID avec Ollama (modèle: {$model})");
+println("🔍 Analyse SOLID avec inspecta-ai");
 println("📊 Comparaison: {$baseRef}..{$headRef}");
 println();
 
@@ -325,7 +170,7 @@ $reportDir  = $workspace . '/.github/solid-reports';
 $reportFile = $reportDir . '/solid-report.md';
 
 $report = "# 🔍 Rapport d'analyse SOLID\n\n";
-$report .= "Analyse effectuée avec le modèle **{$model}** sur les fichiers PHP modifiés (src/ et tests/).\n\n";
+$report .= "Analyse effectuée avec **inspecta-ai** sur les fichiers PHP modifiés (src/ et tests/).\n\n";
 
 $failed = false;
 
@@ -338,21 +183,21 @@ foreach ($files as $file) {
         continue;
     }
 
-    $code = file_get_contents($file);
-    if ($code === false) {
-        println("⚠️  Impossible de lire le fichier, ignoré.\n");
-        continue;
-    }
-
-    println("🤖 Interrogation de l'IA...");
-    $prompt   = buildPrompt($file, $code);
-    $rawReply = callOllama($model, $prompt);
-
-    $json = extractJson($rawReply);
-    if ($json === null) {
-        println("⚠️  Impossible d'extraire un JSON valide pour {$file}.");
-        println("Réponse brute (extrait) :");
-        println(implode("\n", array_slice(explode("\n", stripAnsi($rawReply)), 0, 30)));
+    println("🤖 Interrogation de l'IA via inspecta-ai...");
+    try {
+        $jsonOutput = callInspectaAi($file);
+        $json = parseInspectaAiJson($jsonOutput);
+        
+        if ($json === null) {
+            println("⚠️  Impossible de parser le JSON retourné par inspecta-ai pour {$file}.");
+            println("Réponse brute (extrait) :");
+            println(implode("\n", array_slice(explode("\n", $jsonOutput), 0, 30)));
+            println();
+            continue;
+        }
+    } catch (RuntimeException $e) {
+        println("❌ Erreur lors de l'appel à inspecta-ai pour {$file}:");
+        println($e->getMessage());
         println();
         continue;
     }
