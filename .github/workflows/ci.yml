@@ -106,17 +106,7 @@ jobs:
         uses: ai-action/setup-ollama@v1
 
       - name: Verify Ollama installation
-        run: |
-          if command -v ollama &> /dev/null; then
-            echo "✅ Ollama trouvé dans PATH: $(which ollama)"
-          elif [ -f /usr/local/bin/ollama ]; then
-            echo "✅ Ollama trouvé à /usr/local/bin/ollama"
-            echo "/usr/local/bin" >> $GITHUB_PATH
-          else
-            echo "❌ Ollama non trouvé"
-            find /usr -name ollama 2>/dev/null || true
-            exit 1
-          fi
+        run: whereis ollama
 
       - name: Cache Ollama models
         uses: actions/cache@v4
