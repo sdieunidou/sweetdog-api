@@ -58,21 +58,46 @@ function callInspectaAi(string $filePath): string
 
 /**
  * Parse le JSON retourné par inspecta-ai.
- * inspecta-ai retourne directement du JSON valide, donc on peut le parser directement.
+ * Extrait le JSON même s'il y a du texte avant ou après (logs, warnings, etc.).
  */
 function parseInspectaAiJson(string $jsonOutput): ?array
 {
-    $decoded = json_decode($jsonOutput, true);
+    // Essai direct de parsing (cas le plus courant)
+    $decoded = json_decode(trim($jsonOutput), true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        return $decoded;
+    }
     
-    if (json_last_error() !== JSON_ERROR_NONE) {
+    // Si échec, on cherche le JSON dans la sortie (extraction)
+    $firstBracePos = strpos($jsonOutput, '{');
+    if ($firstBracePos === false) {
         return null;
     }
     
-    if (!is_array($decoded)) {
-        return null;
+    // On cherche la dernière accolade fermante qui forme un JSON valide
+    $substr = substr($jsonOutput, $firstBracePos);
+    $length = strlen($substr);
+    $best = null;
+    $bestLength = 0;
+    
+    for ($i = 0; $i < $length; $i++) {
+        if ($substr[$i] !== '}') {
+            continue;
+        }
+        
+        $candidate = substr($substr, 0, $i + 1);
+        $decoded = json_decode($candidate, true);
+        
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            // On garde le JSON le plus long (le plus complet)
+            if (strlen($candidate) > $bestLength) {
+                $best = $decoded;
+                $bestLength = strlen($candidate);
+            }
+        }
     }
     
-    return $decoded;
+    return $best;
 }
 
 
@@ -192,8 +217,9 @@ foreach ($files as $file) {
         
         if ($json === null) {
             println("⚠️  Impossible de parser le JSON retourné par inspecta-ai pour {$file}.");
-            println("Réponse brute (extrait) :");
-            println(implode("\n", array_slice(explode("\n", $jsonOutput), 0, 30)));
+            println("Erreur JSON: " . json_last_error_msg());
+            println("Réponse brute complète (longueur: " . strlen($jsonOutput) . " caractères):");
+            println($jsonOutput);
             println();
             continue;
         }
