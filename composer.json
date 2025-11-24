@@ -1,6 +1,7 @@
 {
     "type": "project",
     "license": "proprietary",
+    "description": "API REST pour SweetDog",
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
