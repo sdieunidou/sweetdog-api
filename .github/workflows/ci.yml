@@ -105,20 +105,6 @@ jobs:
       - name: Setup Ollama
         uses: ai-action/setup-ollama@v1
 
-      - name: Verify Ollama installation
-        run: |
-          whereis ollama
-          OLLAMA_PATH=$(which ollama || echo "")
-          if [ -n "$OLLAMA_PATH" ]; then
-            OLLAMA_DIR=$(dirname "$OLLAMA_PATH")
-            echo "$OLLAMA_DIR" >> $GITHUB_PATH
-            echo "✅ Ollama trouvé à: $OLLAMA_PATH"
-            echo "✅ Répertoire ajouté au PATH: $OLLAMA_DIR"
-          else
-            echo "⚠️ Ollama non trouvé dans PATH"
-            exit 1
-          fi
-
       - name: Cache Ollama models
         uses: actions/cache@v4
         with:
@@ -200,6 +186,11 @@ jobs:
                 summary: report,
               },
             });
+
+      - name: Ajouter le rapport au summary
+        if: steps.solid-check.outputs.report_exists == 'true'
+        run: |
+              cat ${{ steps.solid-check.outputs.report_file }} >> $GITHUB_STEP_SUMMARY
 
       # --- Nettoyage des anciens commentaires PR ---
       - name: Delete previous SOLID comment (PR)
