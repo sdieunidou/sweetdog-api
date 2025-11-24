@@ -43,6 +43,8 @@ function callInspectaAi(string $filePath): string
         escapeshellarg($filePath)
     );
 
+    println("📋 Commande exécutée: {$cmd}");
+
     $output = [];
     $code   = 0;
     exec($cmd, $output, $code);
