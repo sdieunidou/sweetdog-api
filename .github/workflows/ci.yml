@@ -83,7 +83,7 @@ jobs:
 #        run: vendor/bin/php-cs-fixer fix --dry-run --diff
 
 #      - name: Run PHPStan
-#        run: vendor/bin/phpstan analyse src/
+#q        run: vendor/bin/phpstan analyse src/
 
 #      - name: Run PHPMD
 #        run: vendor/bin/phpmd src text phpmd.xml
@@ -111,7 +111,7 @@ jobs:
             ${{ runner.os }}-ollama-
 
       - name: Pull LLM model
-        run: ollama pull llama3.2
+        run: ollama pull mistral-instruct
 
       - name: SOLID check with Ollama
         id: solid-check
@@ -131,7 +131,7 @@ jobs:
           echo "Head ref: $HEAD_REF"
 
           SOLID_EXIT_CODE=0
-          php .github/scripts/check-solid.php llama3.2 "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
+          php .github/scripts/check-solid.php mistral-instruct "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
 
           echo "solid_exit_code=$SOLID_EXIT_CODE" >> $GITHUB_OUTPUT
 
