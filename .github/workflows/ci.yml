@@ -109,12 +109,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ollama
-          key: ${{ runner.os }}-ollam-${{ hashFiles('**/composer.lock') }}
+          key: ${{ runner.os }}-ollama-cache-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
-            ${{ runner.os }}-ollam-
+            ${{ runner.os }}-ollama-cache-
 
       - name: Pull LLM model
-        run: ollama pull codestral
+        run: ollama pull llama3.2
 
       - name: SOLID check with Ollama
         id: solid-check
@@ -134,7 +134,7 @@ jobs:
           echo "Head ref: $HEAD_REF"
 
           SOLID_EXIT_CODE=0
-          php .github/scripts/check-solid.php codestral "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
+          php .github/scripts/check-solid.php llama3.2 "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
 
           echo "solid_exit_code=$SOLID_EXIT_CODE" >> $GITHUB_OUTPUT
 
