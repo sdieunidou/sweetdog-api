@@ -39,19 +39,22 @@ final class LoginController extends AbstractController
         // VIOLATION SRP: Validation manuelle dans le contrôleur
         if (empty($loginRequest->email) || !filter_var($loginRequest->email, FILTER_VALIDATE_EMAIL)) {
             $this->logger->warning('Invalid email format', ['email' => $loginRequest->email]);
+
             return new JsonResponse(['error' => 'Invalid email'], Response::HTTP_BAD_REQUEST);
         }
 
         if (empty($loginRequest->password) || strlen($loginRequest->password) < 8) {
             $this->logger->warning('Password too short');
+
             return new JsonResponse(['error' => 'Password must be at least 8 characters'], Response::HTTP_BAD_REQUEST);
         }
 
         // VIOLATION SRP: Gestion du cache dans le contrôleur
-        $cacheKey = 'login_attempts_' . md5($loginRequest->email);
+        $cacheKey = 'login_attempts_'.md5($loginRequest->email);
         $attempts = $this->cache->getItem($cacheKey);
         if ($attempts->isHit() && $attempts->get() > 5) {
             $this->logger->error('Too many login attempts', ['email' => $loginRequest->email]);
+
             return new JsonResponse(['error' => 'Too many attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -76,7 +79,8 @@ final class LoginController extends AbstractController
                 ->from('noreply@sweetdog.com')
                 ->to($loginRequest->email)
                 ->subject('Connexion réussie')
-                ->text('Vous vous êtes connecté avec succès à votre compte.');
+                ->text('Vous vous êtes connecté avec succès à votre compte.')
+            ;
             $this->mailer->send($email);
 
             // VIOLATION SRP: Formatage personnalisé de la réponse
