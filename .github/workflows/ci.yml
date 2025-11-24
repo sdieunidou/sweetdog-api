@@ -121,6 +121,24 @@ jobs:
             exit 1
           fi
 
+      - name: Install Symfony CLI
+        run: |
+          curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | sudo -E bash
+          sudo apt install symfony-cli
+
+          - name: Check code style with PHP-CS-Fixer
+          run: |
+            vendor/bin/php-cs-fixer fix --dry-run --diff
+  
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse src/
+  
+      - name: Run PHPMD
+        run: vendor/bin/phpmd src text phpmd.xml
+  
+      - name: Run Deptrac
+        run: vendor/bin/deptrac
+
       - name: Run tests
         run: make tests
 
