@@ -8,9 +8,6 @@ on:
   pull_request:
 
 jobs:
-  # =========================
-  # 1) Lint / qualité rapide
-  # =========================
   lint:
     runs-on: ubuntu-latest
 
@@ -50,9 +47,6 @@ jobs:
       - name: Lint YAML files
         run: bin/console lint:yaml config/
 
-  # =========================
-  # 2) Tests unitaires / fonctionnels
-  # =========================
   tests:
     runs-on: ubuntu-latest
     needs: lint
@@ -148,16 +142,11 @@ jobs:
         if: always()
         run: ${{ steps.docker-compose.outputs.cmd }} down -v
 
-  # =========================
-  # 3) Analyse SOLID / IA (non bloquant)
-  # =========================
   solid-ai:
     runs-on: ubuntu-latest
     needs: lint
-    continue-on-error: true   # 👈 rend le job non bloquant pour la CI globale
+    continue-on-error: true
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-
-    # permissions par défaut (read) suffisent maintenant, on ne commente plus
 
     steps:
       - name: Checkout code
@@ -183,7 +172,6 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      # --- IA / OLLAMA (requis pour inspecta-ai) ---
       - name: Setup Ollama
         uses: ai-action/setup-ollama@v1
 
@@ -203,7 +191,6 @@ jobs:
         run: |
           set -o pipefail
 
-          # Déterminer les commits à comparer
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_REF="${{ github.event.pull_request.base.sha }}"
             HEAD_REF="${{ github.event.pull_request.head.sha }}"
@@ -231,7 +218,6 @@ jobs:
             echo "⚠️ Aucun rapport généré (exit code: $SOLID_EXIT_CODE)"
           fi
 
-          # On ne fait jamais échouer le job ici ; continue-on-error gère le reste
           exit 0
 
       - name: Ajouter le rapport SOLID au summary
