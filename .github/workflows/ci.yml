@@ -145,7 +145,10 @@ jobs:
     needs: lint
     continue-on-error: true
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-
+    
+    permissions:
+      checks: write
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -304,4 +307,3 @@ jobs:
                 summary,
               },
             });
-
