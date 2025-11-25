@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d16ea75af51f8549fcb9ba300845e3d6",
+    "content-hash": "448b4f52a30f125935361b337c31c75d",
     "packages": [
         {
             "name": "composer/semver",
@@ -10303,16 +10303,16 @@
         },
         {
             "name": "sdieunidou/inspecta-ai",
-            "version": "v0.0.3",
+            "version": "v0.0.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sdieunidou/inspecta-ai.git",
-                "reference": "227266783522473e7f915dc0ba14a00094f98db8"
+                "reference": "ac3e74e602daa5cc23aa3cdc61eb736469131956"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sdieunidou/inspecta-ai/zipball/227266783522473e7f915dc0ba14a00094f98db8",
-                "reference": "227266783522473e7f915dc0ba14a00094f98db8",
+                "url": "https://api.github.com/repos/sdieunidou/inspecta-ai/zipball/ac3e74e602daa5cc23aa3cdc61eb736469131956",
+                "reference": "ac3e74e602daa5cc23aa3cdc61eb736469131956",
                 "shasum": ""
             },
             "require": {
@@ -10349,9 +10349,9 @@
             "description": "Inspecta AI is a PHP CLI tool that applies configurable AI analyses to selected files",
             "support": {
                 "issues": "https://github.com/sdieunidou/inspecta-ai/issues",
-                "source": "https://github.com/sdieunidou/inspecta-ai/tree/v0.0.3"
+                "source": "https://github.com/sdieunidou/inspecta-ai/tree/v0.0.5"
             },
-            "time": "2025-11-24T21:13:43+00:00"
+            "time": "2025-11-24T23:16:18+00:00"
         },
         {
             "name": "sebastian/cli-parser",

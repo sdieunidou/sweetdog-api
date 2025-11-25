@@ -54,8 +54,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -146,50 +144,24 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
     continue-on-error: true
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+    
+    permissions:
+      contents: read
+      checks: write
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: pdo, pdo_pgsql, intl, mbstring, zip, xml, dom
-          coverage: none
-
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-php-
-
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
-
-      - name: Setup Ollama
-        uses: ai-action/setup-ollama@v1
-
-      - name: Cache Ollama models
-        uses: actions/cache@v4
-        with:
-          path: ~/.ollama
-          key: ${{ runner.os }}-ollama-cache-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-ollama-cache-
-
-      - name: Pull LLM model
-        run: ollama pull llama3.2
-
-      - name: SOLID check with inspecta-ai
-        id: solid-check
+      - name: Detect changed PHP files
+        id: detect-php-changes
         run: |
           set -o pipefail
+
+          mkdir -p .github/solid-tmp
 
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_REF="${{ github.event.pull_request.base.sha }}"
@@ -199,30 +171,140 @@ jobs:
             HEAD_REF="${{ github.sha }}"
           fi
 
-          echo "Base ref: $BASE_REF"
-          echo "Head ref: $HEAD_REF"
+          CHANGED_FILES=$(git diff --name-only "$BASE_REF" "$HEAD_REF" || true)
+          PHP_CHANGED=$(echo "${CHANGED_FILES}" | grep -E '^(src|tests)/.*\.php$' || true)
 
-          SOLID_EXIT_CODE=0
-          php .github/scripts/check-solid.php "$BASE_REF" "$HEAD_REF" || SOLID_EXIT_CODE=$?
-
-          echo "solid_exit_code=$SOLID_EXIT_CODE" >> $GITHUB_OUTPUT
-
-          REPORT_FILE="${GITHUB_WORKSPACE}/.github/solid-reports/solid-report.md"
-          if [ -f "$REPORT_FILE" ]; then
-            echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
-            echo "report_exists=true" >> $GITHUB_OUTPUT
-            echo "📋 Rapport SOLID généré:"
-            cat "$REPORT_FILE"
+          if [ -n "${PHP_CHANGED}" ]; then
+            echo "${PHP_CHANGED}"
+            echo "${PHP_CHANGED}" > .github/solid-tmp/php-files.txt
+            echo "has_php_changes=true" >> $GITHUB_OUTPUT
           else
-            echo "report_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Aucun rapport généré (exit code: $SOLID_EXIT_CODE)"
+            echo "ℹ️ No PHP files changed in src/ or tests/."
+            echo "has_php_changes=false" >> $GITHUB_OUTPUT
           fi
 
-          exit 0
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_pgsql, intl, mbstring, zip, xml, dom
+          coverage: none
+  
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+  
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+  
+      - name: Setup Ollama
+        if: steps.detect-php-changes.outputs.has_php_changes == 'true'
+        uses: ai-action/setup-ollama@v1
 
-      - name: Ajouter le rapport SOLID au summary
-        if: steps.solid-check.outputs.report_exists == 'true'
+      - name: Cache Ollama models
+        if: steps.detect-php-changes.outputs.has_php_changes == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ${{ runner.os }}-ollama-cache-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ollama-cache-
+
+      - name: Pull LLM model
+        if: steps.detect-php-changes.outputs.has_php_changes == 'true'
+        run: ollama pull llama3.2
+
+      - name: Run inspecta-ai for SOLID
+        if: steps.detect-php-changes.outputs.has_php_changes == 'true'
+        id: solid-inspecta
         run: |
-          echo "## 🔍 Analyse SOLID (IA)" >> $GITHUB_STEP_SUMMARY
+          set -o pipefail
+
+          mkdir -p .github/solid-reports
+
+          RAW_FILE=".github/solid-reports/inspecta-solid-raw.json"
+          FILES=$(cat .github/solid-tmp/php-files.txt)
+
+          echo "Inspecta-AI analysis (solid_violations) on the following files:"
+          echo "$FILES"
+
+          ./vendor/bin/inspecta-ai analyze solid_violations $FILES > "$RAW_FILE"
+          echo "raw_response_file=$RAW_FILE" >> $GITHUB_OUTPUT
+
+      - name: Parse inspecta response
+        if: steps.detect-php-changes.outputs.has_php_changes == 'true'
+        id: parse-response
+        run: |
+          NORMALIZED_FILE=".github/solid-reports/inspecta-solid-normalized.json"
+
+          php .github/scripts/parse_response.php \
+            "${{ steps.solid-inspecta.outputs.raw_response_file }}" \
+            "$NORMALIZED_FILE"
+
+          echo "normalized_file=$NORMALIZED_FILE" >> $GITHUB_OUTPUT
+
+      - name: Emit SOLID annotations
+        if: steps.detect-php-changes.outputs.has_php_changes == 'true'
+        run: |
+          php .github/scripts/emit_annotations.php \
+            "${{ steps.parse-response.outputs.normalized_file }}"
+
+      - name: Generate SOLID markdown report
+        if: steps.detect-php-changes.outputs.has_php_changes == 'true'
+        id: generate-report
+        run: |
+          REPORT_FILE=".github/solid-reports/solid-report.md"
+
+          php .github/scripts/generate_solid_report.php \
+            "${{ steps.parse-response.outputs.normalized_file }}" \
+            "$REPORT_FILE" || true
+
+          if [ -f "$REPORT_FILE" ]; then
+            echo "report_exists=true" >> $GITHUB_OUTPUT
+            echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
+          else
+            echo "report_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add SOLID report to summary
+        if: steps.generate-report.outputs.report_exists == 'true'
+        run: |
+          echo "## 🔍 SOLID analysis (AI)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          cat "${{ steps.solid-check.outputs.report_file }}" >> $GITHUB_STEP_SUMMARY
+          cat "${{ steps.generate-report.outputs.report_file }}" >> $GITHUB_STEP_SUMMARY
+ 
+      - name: Create SOLID / IA Check Run
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          REPORT_EXISTS: ${{ steps.generate-report.outputs.report_exists }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const hasIssues = process.env.REPORT_EXISTS === 'true';
+
+            // 🟢 No SOLID issues → success
+            // ⚪ Issues detected → neutral (not blocking)
+            const conclusion = hasIssues ? 'neutral' : 'success';
+
+            const summary = hasIssues
+              ? 'SOLID issues detected. See annotations and the solid-ai job logs for details.'
+              : 'No SOLID issues detected.';
+
+            await github.rest.checks.create({
+              owner,
+              repo,
+              name: 'SOLID / IA',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion,
+              output: {
+                title: 'SOLID / IA',
+                summary,
+              },
+            });
