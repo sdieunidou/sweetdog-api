@@ -276,28 +276,32 @@ jobs:
       - name: Create SOLID / IA Check Run
         if: always()
         uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
           REPORT_EXISTS: ${{ steps.generate-report.outputs.report_exists }}
-        script: | 
-          const { owner, repo } = context.repo;
-          const hasIssues = process.env.REPORT_EXISTS === 'true';
-          const conclusion = hasIssues ? 'neutral' : 'success';
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const hasIssues = process.env.REPORT_EXISTS === 'true';
 
-          const summary = hasIssues
-            ? 'SOLID issues detected. See annotations and the solid-ai job logs for details.'
-            : 'No SOLID issues detected.';
+            // 🟢 No SOLID issues → success
+            // ⚪ Issues detected → neutral (not blocking)
+            const conclusion = hasIssues ? 'neutral' : 'success';
 
-          await github.rest.checks.create({
-            owner,
-            repo,
-            name: 'SOLID / IA',
-            head_sha: context.sha,
-            status: 'completed',
-            conclusion,
-            output: {
-              title: 'SOLID / IA',
-              summary,
-            },
-          });
+            const summary = hasIssues
+              ? 'SOLID issues detected. See annotations and the solid-ai job logs for details.'
+              : 'No SOLID issues detected.';
+
+            await github.rest.checks.create({
+              owner,
+              repo,
+              name: 'SOLID / IA',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion,
+              output: {
+                title: 'SOLID / IA',
+                summary,
+              },
+            });
+
