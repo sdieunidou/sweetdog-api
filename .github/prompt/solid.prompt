@@ -69,7 +69,6 @@ Format JSON requis :
 
 {
   "file": "chemin/du/fichier.php",
-  "solid_ok": true,
   "problems": [],
 }
 
@@ -77,7 +76,6 @@ ou si problèmes détectés :
 
 {
   "file": "chemin/du/fichier.php",
-  "solid_ok": false,
   "problems": [
     {
       "principle": "SRP",
@@ -92,10 +90,6 @@ ou si problèmes détectés :
       "line": 42
     }
   ]
-},
+}
 
 FICHIER: %%file%%
-
-Attention, adapte bien le flag "solid_ok" :
-* si aucun problème => true
-* si des problèmes sont détectés => false
