@@ -280,11 +280,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
           REPORT_EXISTS: ${{ steps.generate-report.outputs.report_exists }}
-        script: |
+        script: | 
           const { owner, repo } = context.repo;
-
           const hasIssues = process.env.REPORT_EXISTS === 'true';
-
           const conclusion = hasIssues ? 'neutral' : 'success';
 
           const summary = hasIssues
