@@ -71,7 +71,6 @@ Format JSON requis :
   "file": "chemin/du/fichier.php",
   "solid_ok": true,
   "problems": [],
-  "score": 85
 }
 
 ou si problèmes détectés :
@@ -92,8 +91,11 @@ ou si problèmes détectés :
       ],
       "line": 42
     }
-  ],
-  "score": 60
+  ]
 },
 
 FICHIER: %%file%%
+
+Attention, adapte bien le flag "solid_ok" :
+* si aucun problème => true
+* si des problèmes sont détectés => false
