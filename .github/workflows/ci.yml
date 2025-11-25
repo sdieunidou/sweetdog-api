@@ -231,9 +231,6 @@ jobs:
           ./vendor/bin/inspecta-ai analyze solid_violations $FILES > "$RAW_FILE"
           echo "raw_response_file=$RAW_FILE" >> $GITHUB_OUTPUT
 
-          echo "Contents of $RAW_FILE:"
-          cat "$RAW_FILE"
-
       - name: Parse inspecta response
         if: steps.detect-php-changes.outputs.has_php_changes == 'true'
         id: parse-response
