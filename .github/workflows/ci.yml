@@ -225,7 +225,7 @@ jobs:
           RAW_FILE=".github/solid-reports/inspecta-solid-raw.json"
           FILES=$(cat .github/solid-tmp/php-files.txt)
 
-          echo "Analyse SOLID IA sur les fichiers suivants :"
+          echo "Analyse Inspecta-AI (solid_violations) sur les fichiers suivants :"
           echo "$FILES"
 
           ./vendor/bin/inspecta-ai analyze solid_violations $FILES > "$RAW_FILE"
