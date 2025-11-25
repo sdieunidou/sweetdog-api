@@ -159,7 +159,6 @@ jobs:
 
           mkdir -p .github/solid-tmp
 
-          # Déterminer les commits à comparer
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_REF="${{ github.event.pull_request.base.sha }}"
             HEAD_REF="${{ github.event.pull_request.head.sha }}"
@@ -169,18 +168,11 @@ jobs:
           fi
 
           CHANGED_FILES=$(git diff --name-only "$BASE_REF" "$HEAD_REF" || true)
-          echo "Changed files:"
-          echo "${CHANGED_FILES}"
-
           PHP_CHANGED=$(echo "${CHANGED_FILES}" | grep -E '^(src|tests)/.*\.php$' || true)
 
           if [ -n "${PHP_CHANGED}" ]; then
-            echo "✅ Fichiers PHP modifiés détectés :"
             echo "${PHP_CHANGED}"
-
-            # On sauvegarde la liste dans un fichier, un par ligne
             echo "${PHP_CHANGED}" > .github/solid-tmp/php-files.txt
-
             echo "has_php_changes=true" >> $GITHUB_OUTPUT
           else
             echo "ℹ️ Aucun fichier PHP modifié dans src/ ou tests/."
@@ -205,7 +197,6 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
   
-      # --- IA / OLLAMA (requis pour inspecta-ai) ---
       - name: Setup Ollama
         if: steps.detect-php-changes.outputs.has_php_changes == 'true'
         uses: ai-action/setup-ollama@v1
@@ -237,9 +228,11 @@ jobs:
           echo "Analyse SOLID IA sur les fichiers suivants :"
           echo "$FILES"
 
-          ./vendor/bin/inspecta-ai analyze solid_violations $FILES -c tests/data/config/inspecta-ai.yaml > "$RAW_FILE"
-
+          ./vendor/bin/inspecta-ai analyze solid_violations $FILES > "$RAW_FILE"
           echo "raw_response_file=$RAW_FILE" >> $GITHUB_OUTPUT
+
+          echo "Contenu de $RAW_FILE :"
+          cat "$RAW_FILE"
 
       - name: Parse inspecta response
         if: steps.detect-php-changes.outputs.has_php_changes == 'true'
