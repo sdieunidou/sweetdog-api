@@ -272,6 +272,4 @@ jobs:
           echo "## 🔍 SOLID analysis (AI)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           cat "${{ steps.generate-report.outputs.report_file }}" >> $GITHUB_STEP_SUMMARY
-          echo ""
-          echo "Current summary content:"
-          cat "$GITHUB_STEP_SUMMARY"
+ 
