@@ -175,7 +175,7 @@ jobs:
             echo "${PHP_CHANGED}" > .github/solid-tmp/php-files.txt
             echo "has_php_changes=true" >> $GITHUB_OUTPUT
           else
-            echo "ℹ️ Aucun fichier PHP modifié dans src/ ou tests/."
+            echo "ℹ️ No PHP files changed in src/ or tests/."
             echo "has_php_changes=false" >> $GITHUB_OUTPUT
           fi
 
@@ -225,13 +225,13 @@ jobs:
           RAW_FILE=".github/solid-reports/inspecta-solid-raw.json"
           FILES=$(cat .github/solid-tmp/php-files.txt)
 
-          echo "Analyse Inspecta-AI (solid_violations) sur les fichiers suivants :"
+          echo "Inspecta-AI analysis (solid_violations) on the following files:"
           echo "$FILES"
 
           ./vendor/bin/inspecta-ai analyze solid_violations $FILES > "$RAW_FILE"
           echo "raw_response_file=$RAW_FILE" >> $GITHUB_OUTPUT
 
-          echo "Contenu de $RAW_FILE :"
+          echo "Contents of $RAW_FILE:"
           cat "$RAW_FILE"
 
       - name: Parse inspecta response
@@ -269,9 +269,9 @@ jobs:
             echo "report_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Ajouter le rapport SOLID au summary
+      - name: Add SOLID report to summary
         if: steps.generate-report.outputs.report_exists == 'true'
         run: |
-          echo "## 🔍 Analyse SOLID (IA)" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 SOLID analysis (AI)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           cat "${{ steps.generate-report.outputs.report_file }}" >> $GITHUB_STEP_SUMMARY
